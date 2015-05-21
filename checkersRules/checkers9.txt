@@ -1,0 +1,26 @@
+Checkers is played on a board made up of squares. They are laid out in eight columns and eight rows.
+
+Initial Checker Setup.
+Checkers is a game for two players. Each player receives twelve, flat disk-like pieces which are placed on the black squares in the manner indicated in the diagram at the left. Be sure that a light colored square appears in the lower right hand corner of the board. The darker colored checkers are usually designated black, and the lighter color is designated white. Black always moves first. There is some advantage to moving first, but on the beginner level it is very slight.
+
+While playing, you may record your game by using checker notation. The black squares are numbered as indicated in the diagram on the right. To record a move, simply write down the square the move is from and then the number of the square where the piece was moved. This is seldom done in friendly games, but is essential in tournament play. It is also convenient for discussing games and strategies.
+
+Now that you have set up the board, you are ready to begin play. First, determine who is to be "black". You can use any method for this you wish, flip a coin, alternate, etc. However, the most common method in amateur play is for one of the players to take one color checker in each hand and hold out his hands before him. The other player chooses a hand, the color checker in that hand determines the color with which he plays.
+
+The object is to eliminate all opposing checkers or to create a situation in which it is impossible for your opponent to make any move. Normally, the victory will be due to complete elimination.
+
+Non-capturing Move.
+Black moves first and play proceeds alternately. From their initial positions, checkers may only move forward. There are two types of moves that can be made, capturing moves and non-capturing moves. Non-capturing moves are simply a diagonal move forward from one square to an adjacent square. (Note that the white squares are never used.) Capturing moves occur when a player "jumps" an opposing piece. This is also done on the diagonal and can only happen when the square behind (on the same diagonal) is also open. This means that you may not jump an opposing piece around a corner.
+
+Capturing Move.
+On a capturing move, a piece may make multiple jumps. If after a jump a player is in a position to make another jump then he may do so. This means that a player may make several jumps in succession, capturing several pieces on a single turn.
+
+Forced Captures: When a player is in a position to make a capturing move, he must make a capturing move. When he has more than one capturing move to choose from he may take whichever move suits him.
+
+Crowning King in Checkers.
+
+When a checker achieves the opponent's edge of the board (called the "king's row") it is crowned with another checker. This signifies that the checker has been made a king. The king now gains an added ability to move backward. The king may now also jump in either direction or even in both directions in one turn (if he makes multiple jumps).
+
+A similar idea in the game of chess occurs when a pawn reaches the opponent's end of the board it becomes a queen. There is a practical reason for these piece promotions. Without it, a piece which can only move in one direction becomes worthless. Interestingly enough it also has some social significance in that it signifies that royalty and power should not be simply endowed at birth. Nobility is something that can be and should be earned.
+
+If the player gets an uncrowned checker on the king's row because of a capturing move then he must stop to be crowned even if another capture seems to be available. He may then use his new king on his next move.

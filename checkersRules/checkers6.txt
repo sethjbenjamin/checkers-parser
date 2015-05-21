@@ -1,0 +1,21 @@
+Checkers is a  game for two players. It is played on an 8x8 checkered board, with a dark square in each player's lower left corner.
+In checkers, pieces move only on dark squares which are numbered. Numbers are used to record the moves, for example,   if Red moves from square 9 to square 13, then it is recorded as: 9-13
+
+Each player controls its own army of pieces (men). The player who controls Red pieces moves first.  The pieces (also known as 'men') are arranged as shown on the left.
+
+The goal in the checkers game is either to capture all of the opponent's pieces or to blockade them. If neither player can accomplish the above, the game is a draw.
+
+Moves.
+Starting with Red, the players take turns moving one of their own pieces. A 'piece' means either a 'man'--an ordinary single checker or a 'king' which is what a man becomes if it reaches the last rank (see kings). 
+A man may move one square diagonally only forward--that is, toward the opponent--onto an empty square. Thus, on the diagram on the right-hand side, the red pieces can move 12-16, 11-16 or 11-15. Similarly, the white pieces can move 24-20, 24-19 or 23-19.
+
+ 
+Captures ('Jumps').
+Captures or 'jumps' are mandatory. If a square diagonally in front of a man is occupied by an opponent's piece, and if the square beyond that piece in the same direction is empty, the man may 'jump' over the opponent's piece and land on the empty square. The opponent's piece is captured and removed from the board. Thus, on the diagram  on the right-hand side red can 'jump' 14-21, leaving square (where white man used to stand) 17 empty. Similarly, if it were white turn to move, the white man could 'jump' over its red counterpart 17-10, leaving square 14 empty.
+
+If in the course of single or multiple jumps the man reaches the last rank, becoming a king, the turn shifts to the opponent. No further 'continuation' jump is possible.
+
+The Kings.
+When a single piece reaches the last rank of the board by reason of a move, or as the completion of a 'jump', it becomes a king; and that completes the move, or 'jump'.
+
+A King can move in any direction and 'jump' in any direction one or more pieces, as the limits of the board permit. The King can only jump diagonally over one adjacent piece at a time, in any of the four diagonal directions. Multiple jumps are possible.

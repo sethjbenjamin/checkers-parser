@@ -1,0 +1,45 @@
+Introduction.
+
+Checkers (also known as Draughts) is a two-player board game. This page gives the standard British-American rules for checkers, which are the rules most commonly used for online play. 
+
+Setting up the board.
+
+Checkers is played on a board which is divided into 64 squares. Each player starts the game with 12 checkers, also called "men".
+
+The two players sit across from one another. The board is oriented so a black (dark) square is in the bottom left corner for each player.
+
+Flip a coin to determine who is black and who is white. Black goes first. After the first game, alternate colors.
+
+To set up the board, place your checkers on all 12 black squares in the three rows closest to you, as shown below.
+
+Setting up the board.
+
+Checkers uses only the black squares. You can't move your checkers into a white (red) square.
+
+Moving the checkers.
+
+Move your checker forward one space diagonally in either direction to an open black square. A checker can only move forward. You may not land on a square that is occupied by your checker or your opponent's checker.
+
+Players alternate turns, making one move per turn.
+
+Crowning a king.
+
+When a checker reaches the last row of the board, he is "kinged" or "crowned" and becomes a king. A king moves the same way as a regular checker, except he can move forward or backward. To king a checker, the opponent stacks an extra checker of the same color on top of it. Or, on some games, the player flips the checker to reveal a crown.
+
+Jumping a checker.
+
+On your turn, if your checker is next to your opponent's checker, and the black square behind your opponent's checker is open, you must jump over it. After you jump your opponent's checker, remove it from the board. You have "captured" your opponent's checker. 
+
+If one jump leads to another jump, you then continue with the next jump as part of the same turn. Continue in this way until all possible jumps are complete. If your checker jumps to the last row and is crowned, you may not make any further jumps, your turn is over.
+
+Jumping is compulsory. If you have the opportunity to jump and capture an opponent's checker, you must take it. If you have more than one capturing opportunity, you may choose whichever you prefer.
+
+You may not jump over your own checkers.
+
+You can jump and capture a king the same way as you jump and capture a regular checker.
+
+Winning the game.
+
+A player wins the game when they capture all of their opponent's checkers, or when they block their opponent completely and the opponent cannot move.
+
+Players may agree to a draw if neither player can win the game. 

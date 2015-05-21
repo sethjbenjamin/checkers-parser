@@ -1,0 +1,53 @@
+The Board.	
+The checkerboard has 64 alternating light and dark squares. The game is played on the dark squares.
+
+Official tournament checker boards are 16 inches wide with alternating green and buff squares.
+
+The board should be placed so that there is a light corner square nearest each player’s right-hand side and a dark corner square nearest each player’s left-hand side.
+
+Pieces	
+Each player starts out with 12 playing pieces. One player has light colored pieces (called “white”) and the other has dark pieces (called “black” although the pieces may actually be red). Each player starts with their pieces laid out on the 12 dark squares nearest him or her.
+
+Official tournament checker pieces are one and one quarter to one and a half inches in diameter.
+
+First Move.
+The player with the black pieces moves first. Randomly determine who gets the black pieces first. Use a coin toss (many authors say to “cast lots”). When playing a series of games, the players alternate who gets the black pieces.
+
+Time Limits.	
+In official games, five minutes are allowed for each move. In the case where there is only one possible jump available, the player has only one minute in which to make it. The player needs to be made aware that the time limit has been reached. Then, if the player still has not moved after another minute, that player loses the game.
+
+Touching Pieces.	
+Before the first move is made, either player can adjust the position of any piece on the board. After the first move, no player can adjust any piece without “intimation.” In other words, you just need to say you’re going to adjust a piece before you do it. The player who adjusts a piece without intimation can be warned for the first offence, but will forfeit the game on the second offence.
+
+If the player whose move it is touches a piece that can be played, the player must move that piece or forfeit the game.
+
+If any part of a playable piece is moved over the angle of its square, the piece must be played in that direction.
+
+When the player’s hand is withdrawn from the board, the move is ended.
+
+Jumps.
+Pask, p.122, states, “All jumping moves are compulsory.” Every opportunity to jump must be taken. In the case where there are different jump sequences available, the player may chose which sequence to make, whether it results in the most pieces being taken or not.
+
+Hopper, p. 102 and Pike, p. 113 both mention the “huff” or “blow.” Hopper says it is obsolete. Pike says it has been abolished. The idea of the huff was that if a player refused to make an available jump, the opposing player could remove the piece that should have jumped. In modern checkers, all jumps must be taken.
+
+Reinfeld does not mention forced jumps in his rules, however, elsewhere in the book, p. 18, he makes it clear that “In checkers, captures are compulsory.”
+
+In American checkers, a jump must be made only over an adjacent piece. A piece cannot jump over empty squares.
+
+Although no one actually says so, it is strongly implied that single pieces cannot jump backwards.
+
+Kings.	
+When a player’s piece lands in one of the squares at the far end of the board, its move ends there and it becomes a king.
+
+A king is allowed to move or jump in any of the four diagonal directions within the limits of the board. A king cannot jump over one of the player’s own pieces.
+
+Win or Draw.	
+A player wins by either capturing all of the other player’s pieces or putting them into a position where they cannot move. A player can also win if the other player resigns or forfeits the game as a result of a violation of the rules.
+
+A game is declared a draw when neither player can force a win. Pask, p. 123, says that a draw can be declared any time both players agree to it.
+
+Hopper and Reinfeld say that when one side “appears stronger” than the other, the player with the stronger position is required to show a “decided advantage” within 40 of his own moves or else the game is declared a draw. These judgments are to be made by a referee.
+
+Pike, p. 113, says that the player with the weaker side may request the 40-move count of the referee. He also says that the requirement is for an “increased” advantage within 40 moves, rather than the “decided” advantage.
+
+Pask, p. 123 says that it’s a 50-move rule. He further refines the concept of the “advantage” that must be demonstrated: if neither side has advanced a piece towards the king-row and if no pieces have been removed from the board within 50 moves, the game is a draw. He also adds another set of conditions under which a draw can be declared: “A draw shall be declared if a player can demonstrate that with his next move he would create the same position for the fourth time during the game.”

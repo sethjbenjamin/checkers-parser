@@ -1,0 +1,14 @@
+Object.
+The object of the game is to take all your opponent's pieces or place him in a position where he or she can no longer make any moves.
+Turns.
+Players shall take turns at starting the game. The visitor shall start the first game.
+Obligation to move
+A player has to move, a player who can no longer move loses.
+Moving pieces.
+All pieces, men and kings, can move only diagonally. Pieces can only move to adjacent unoccupied black squares except when making a jump (see below). Men may only move and jump forwards while kings may move and jump forwards as well as backwards.
+Obligation to jump.
+If one player's piece has the opposing player's piece as a diagonal neighbor and the square behind the opposing player's piece is unoccupied the player can make a jump and remove his opponent's piece from the board. If a player can make a jump such player has an obligation to make a jump. If after making a jump another jump is possible the player must jump again (with the exception of pieces that have just been crowned).
+Crowning.
+Upon reaching the last row on the far side of the checkers board, the so-called king row, a piece is crowned and becomes a king. Being crowned ends the move, a crowned piece may not continue with a jump even if possible.
+Referee.
+The referee will step in to determine the winner, if during 20 moves (10 by each player), only kings have changed position (i.e. no man has moved forward and no piece has been removed from the board), and there appear to be repeating movements. In such cases the referee will determine the winner according to who holds the strongest position. Kings being worth more and men closer to the king row being worth more than those further away. In the event that both parties are of equal strength the referee shall call a draw.

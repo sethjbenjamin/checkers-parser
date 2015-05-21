@@ -1,0 +1,25 @@
+Initial Setup.
+
+Checkers is played on a standard 8X8 board of alternating colors (dark and light), the same board as in chess. Each player sit opposite the other and fills the dark colored locations on the three closest rows with checkers of their color.
+
+Gameplay.
+
+The player with the darker colored checkers goes first. The players take turns after that.
+Each turn, one player must move one of their checkers if they can. If they cannot move any piece, they have lost. If the player can make a "jump", they must make a jump. If more than one jump is available, they may choose any.
+
+
+Checker Movement.
+
+Checkers move one space diagonally forward into an un-occupied location. They never enter the light colored locations or move backwards. When a location diagonally forwards is filled with an opposing checker and the location immediately after it (continuing in a straight diagonal) is open, the checker may "jump" the other and land in the open space. The piece that was jumped over is then removed from player.
+
+King Movement.
+
+When a checker reaches the row on the farthest edge from the player, it becomes a king and may then move and jump both diagonally forward and backward, following the same rules as above.
+Multiple Jumps.
+
+When a player makes a jump and is then in a position to make another jump with the same checker, that jump must be made immediately. There is no limit to how many jumps one can make in a row, but you must keep jumping until you cannot make any legal jumps with that checker. When faced with multiple legal jumps, the player may choose any.
+
+The pieces you jump are not removed from the board until the end of the turn, so you may not enter any of those locations during the jump and you may not re-jump a jumped piece. Also, a checker which becomes a king part way through its jumping by reaching the last row may not continue jumping on that turn.
+
+End of Game.
+The game ends when one player can make no legal moves, including when the player has no pieces left. If both players have only a single piece left, the game ends in stalemate.

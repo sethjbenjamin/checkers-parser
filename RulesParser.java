@@ -81,15 +81,6 @@ public class RulesParser
 		FORWARD, BACKWARD, LEFT, RIGHT, DIAGONAL
 	}
 
-	/*public boolean isPunctuation(char c)
-	{
-		return PUNCTUATION.indexOf(c) > -1;
-	}
-
-	public boolean isTerminatingPunctuation(char c)
-	{
-		return TERMINATING_PUNCTUATION.indexOf(c) > -1;
-	}*/
 
 
 	

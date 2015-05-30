@@ -4,7 +4,7 @@ public class Driver
 	{
 		RulesParser foo = new RulesParser(args[0]);
 		foo.parse();
-
+		
 		
 	}
 }

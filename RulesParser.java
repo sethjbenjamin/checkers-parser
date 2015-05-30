@@ -108,33 +108,36 @@ public class RulesParser
 						int endIndexAdv = d.lastIndexOf('-'); //index in "d" of hyphen immediately following modifying adverb in d
 
 						String adverb = d.substring(startIndexAdv,endIndexAdv);
-						switch (adverb) //TODO: synonyms of each adverb (use wordnet?)
+
+						if (isSynonymOf("diagonally", adverb))
 						{
-							case "diagonally":
-								if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
-									motionTypes.add(Direction.DIAGONAL);
-								System.out.println("Sentence " + i + ": As an adverb, " + "Diagonal motion added."); //debugging
-								break;
-							case "forward":
-								if (motionTypes.indexOf(Direction.FORWARD) < 0) 
-									motionTypes.add(Direction.FORWARD);
-								System.out.println("Sentence " + i + ": As an adverb, " + "Forward motion added."); //debugging
-								break;
-							case "backward":
-								if (motionTypes.indexOf(Direction.BACKWARD) < 0)
-									motionTypes.add(Direction.BACKWARD);
-								System.out.println("Sentence " + i + ": As an adverb, " + "Backward motion added."); //debugging
-								break;
-							case "left":
-								if (motionTypes.indexOf(Direction.LEFT) < 0)
-									motionTypes.add(Direction.LEFT);
-								System.out.println("Sentence " + i + ": As an adverb, " + "Leftward motion added."); //debugging
-								break;
-							case "right":
-								if (motionTypes.indexOf(Direction.RIGHT) < 0)
-									motionTypes.add(Direction.RIGHT);
-								System.out.println("Sentence " + i + ": As an adverb, " + "Rightward motion added."); //debugging
-								break;		
+							if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
+								motionTypes.add(Direction.DIAGONAL);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Diagonal motion added."); //debugging
+						}
+						else if (isSynonymOf("forward", adverb))
+						{
+							if (motionTypes.indexOf(Direction.FORWARD) < 0)
+								motionTypes.add(Direction.FORWARD);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Forward motion added."); //debugging
+						}
+						else if (isSynonymOf("backward", adverb))
+						{
+							if (motionTypes.indexOf(Direction.BACKWARD) < 0)
+								motionTypes.add(Direction.BACKWARD);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Backward motion added."); //debugging
+						}
+						else if (isSynonymOf("left", adverb))
+						{
+							if (motionTypes.indexOf(Direction.LEFT) < 0)
+								motionTypes.add(Direction.LEFT);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Leftward motion added."); //debugging
+						}
+						else if (isSynonymOf("right", adverb))
+						{
+							if (motionTypes.indexOf(Direction.RIGHT) < 0)
+								motionTypes.add(Direction.RIGHT);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Rightward motion added."); //debugging
 						}
 					}
 				}
@@ -156,35 +159,39 @@ public class RulesParser
 						int startIndexAdj = d.indexOf(' ') + 1; //index in the first character of the modifying adjective in d
 						int endIndexAdj = d.lastIndexOf('-'); //index of hyphen immediately following modifying adjective in d
 
-						String adj = d.substring(startIndexAdj, endIndexAdj);
-						switch (adj)
+						String adjective = d.substring(startIndexAdj, endIndexAdj);
+						
+						if (isSynonymOf("diagonal", adjective))
 						{
-							case "diagonal":
-								if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
-									motionTypes.add(Direction.DIAGONAL);
-								System.out.println("Sentence " + i + ": As an adjective, " + "Diagonal motion added."); //debugging
-								break;
-							case "forward":
-								if (motionTypes.indexOf(Direction.FORWARD) < 0)
-									motionTypes.add(Direction.FORWARD);
-								System.out.println("Sentence " + i + ": As an adjective, " + "Forward motion added."); //debugging
-								break;
-							case "backward":
-								if (motionTypes.indexOf(Direction.BACKWARD) < 0)
-									motionTypes.add(Direction.BACKWARD);
-								System.out.println("Sentence " + i + ": As an adjective, " + "Backward motion added."); //debugging
-								break;
-							case "left":
-								if (motionTypes.indexOf(Direction.LEFT) < 0)
-									motionTypes.add(Direction.LEFT);
-								System.out.println("Sentence " + i + ": As an adjective, " + "Leftward motion added."); //debugging
-								break;
-							case "right":
-								if (motionTypes.indexOf(Direction.RIGHT) < 0)
-									motionTypes.add(Direction.RIGHT);
-								System.out.println("Sentence " + i + ": As an adjective, " + "Rightward motion added."); //debugging
-								break;
+							if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
+								motionTypes.add(Direction.DIAGONAL);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Diagonal motion added."); //debugging
 						}
+						else if (isSynonymOf("forward", adjective))
+						{
+							if (motionTypes.indexOf(Direction.FORWARD) < 0)
+								motionTypes.add(Direction.FORWARD);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Forward motion added."); //debugging
+						}
+						else if (isSynonymOf("backward", adjective))
+						{
+							if (motionTypes.indexOf(Direction.BACKWARD) < 0)
+								motionTypes.add(Direction.BACKWARD);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Backward motion added."); //debugging
+						}
+						else if (isSynonymOf("left", adjective))
+						{
+							if (motionTypes.indexOf(Direction.LEFT) < 0)
+								motionTypes.add(Direction.LEFT);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Leftward motion added."); //debugging
+						}
+						else if (isSynonymOf("right", adjective))
+						{
+							if (motionTypes.indexOf(Direction.RIGHT) < 0)
+								motionTypes.add(Direction.RIGHT);
+							System.out.println("Sentence " + i + ": As an adjective, " + "Rightward motion added."); //debugging
+						}
+
 					}
 
 				}

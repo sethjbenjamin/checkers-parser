@@ -20,7 +20,7 @@ public class RulesParser
 	private StanfordCoreNLP pipeline;
 	private Annotation annotation;
 	private List<CoreMap> sentences;
-	//WordNet implementation using JAWS:
+	//WordNet 3.0 implementation using JAWS:
 	private WordNetDatabase wordnet;
 
 
@@ -28,9 +28,9 @@ public class RulesParser
 	{
 		this.fileName = fileName;
 
-		// creates a StanfordCoreNLP object, with sentence splitting, POS tagging, lemmatization, and syntactic dependency parsing
+		// creates a StanfordCoreNLP object, with sentence splitting, POS tagging, lemmatization, NER, and parsing
 		Properties annotators = new Properties();
-		annotators.put("annotators", "tokenize, ssplit, pos, lemma, depparse");
+		annotators.put("annotators", "tokenize, ssplit, pos, lemma, parse");
 		pipeline = new StanfordCoreNLP(annotators);
 
 		wordnet = WordNetDatabase.getFileInstance();
@@ -99,7 +99,7 @@ public class RulesParser
 					int verbIndex = Integer.parseInt(d.substring(startIndexNum,endIndexNum));
 
 					//Now we determine the lemma of the verb, and see if it is a synonym of "move" or "jump."
-					String verbLemma = lemmas.get(verbIndex-1);
+					String verbLemma = lemmas.get(verbIndex-1); //-1 because the sentence indices start from 1, not 0
 
 					if (isSynonymOf("move", verbLemma) || isSynonymOf("jump", verbLemma))
 					{
@@ -109,36 +109,9 @@ public class RulesParser
 
 						String adverb = d.substring(startIndexAdv,endIndexAdv);
 
-						if (isSynonymOf("diagonally", adverb))
-						{
-							if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
-								motionTypes.add(Direction.DIAGONAL);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Diagonal motion added."); //debugging
-						}
-						else if (isSynonymOf("forward", adverb))
-						{
-							if (motionTypes.indexOf(Direction.FORWARD) < 0)
-								motionTypes.add(Direction.FORWARD);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Forward motion added."); //debugging
-						}
-						else if (isSynonymOf("backward", adverb))
-						{
-							if (motionTypes.indexOf(Direction.BACKWARD) < 0)
-								motionTypes.add(Direction.BACKWARD);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Backward motion added."); //debugging
-						}
-						else if (isSynonymOf("left", adverb))
-						{
-							if (motionTypes.indexOf(Direction.LEFT) < 0)
-								motionTypes.add(Direction.LEFT);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Leftward motion added."); //debugging
-						}
-						else if (isSynonymOf("right", adverb))
-						{
-							if (motionTypes.indexOf(Direction.RIGHT) < 0)
-								motionTypes.add(Direction.RIGHT);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Rightward motion added."); //debugging
-						}
+						/*Now, we call addDirection() to check if "adverb" is a directional adverb, and if so, to
+						add it to "motionTypes". */
+						addDirection(adverb, motionTypes, i); //TODO: remove i!!!
 					}
 				}
 				else if (d.contains("amod"))
@@ -151,7 +124,7 @@ public class RulesParser
 					int nounIndex = Integer.parseInt(d.substring(startIndexNum,endIndexNum));
 
 					//Now we determine the lemma of the noun, and see if it is a synonym of "move" or "direction."
-					String nounLemma = lemmas.get(nounIndex-1);
+					String nounLemma = lemmas.get(nounIndex-1); //-1 because the sentence indices start from 1, not 0
 
 					if (isSynonymOf("move", nounLemma) || isSynonymOf("direction", nounLemma))
 					{
@@ -161,37 +134,9 @@ public class RulesParser
 
 						String adjective = d.substring(startIndexAdj, endIndexAdj);
 						
-						if (isSynonymOf("diagonal", adjective))
-						{
-							if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
-								motionTypes.add(Direction.DIAGONAL);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Diagonal motion added."); //debugging
-						}
-						else if (isSynonymOf("forward", adjective))
-						{
-							if (motionTypes.indexOf(Direction.FORWARD) < 0)
-								motionTypes.add(Direction.FORWARD);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Forward motion added."); //debugging
-						}
-						else if (isSynonymOf("backward", adjective))
-						{
-							if (motionTypes.indexOf(Direction.BACKWARD) < 0)
-								motionTypes.add(Direction.BACKWARD);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Backward motion added."); //debugging
-						}
-						else if (isSynonymOf("left", adjective))
-						{
-							if (motionTypes.indexOf(Direction.LEFT) < 0)
-								motionTypes.add(Direction.LEFT);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Leftward motion added."); //debugging
-						}
-						else if (isSynonymOf("right", adjective))
-						{
-							if (motionTypes.indexOf(Direction.RIGHT) < 0)
-								motionTypes.add(Direction.RIGHT);
-							System.out.println("Sentence " + i + ": As an adjective, " + "Rightward motion added."); //debugging
-						}
-
+						/*Now, we call addDirection() to check if "adjective" is a directional adjective, and if so, to
+						add it to "motionTypes". */
+						addDirection(adjective, motionTypes, i); //TODO: remove i!!!
 					}
 
 				}
@@ -202,18 +147,81 @@ public class RulesParser
 
 	/**
 	Tests if "second" is a synonym of "first" by seeing if "second" is one of the 
-	word forms given in any WordNet synset of "first."
+	word forms given in specified WordNet synsets of "first." The parameter "indices"
+	specifies the indices of which specific synsets are to be checked.
 	*/
-	public boolean isSynonymOf(String first, String second)
+	public boolean isSynonymOf(String first, String second, int... indices)
 	{
-		Synset[] firstSynsets = wordnet.getSynsets(first);
-		for (Synset synset: firstSynsets)
+		Synset[] firstSynsetsAll = wordnet.getSynsets(first); //all synsets in wordnet of "first"
+		Synset[] firstSynsetsDesired; //this array will hold only the desired synsets of "first" (specified by "indices")
+
+		int i = 0;
+		if (indices.length > 0)
+		{
+			firstSynsetsDesired = new Synset[indices.length]; 
+			for (int ind: indices)
+			{
+				firstSynsetsDesired[i] = firstSynsetsAll[ind]; 
+				//this loop adds each of the specified synsets from firstSynsetsAll to the ith position in firstSynsetsDesired
+				i++;
+			}
+		}
+		else
+			firstSynsetsDesired = firstSynsetsAll; //if no indices are specified, default to check all synsets
+
+		for (Synset synset: firstSynsetsDesired)
 		{
 			String[] synonyms = synset.getWordForms();
 			if (Arrays.asList(synonyms).contains(second))
 				return true;
 		}
 		return false;
+	}
+
+	/**
+	Used by parseMotion() to update an ArrayList containing the allowed types of motion for a piece.
+	Given a reference to a String "word" and an ArrayList<Direction> "motionTypes" holding certain Directions (representing the allowed
+	types of motion for a piece), this method does the following:
+	-if "word" is a synonym of any of the directional words "diagonal"/"diagonally", "forward," "backward," "left," and "right,"
+	the method then checks if whatever direction "word" entails has been added to "motionTypes" yet. If it has not, the method
+	adds that direction to "motionTypes."; if it has, the method does nothing else.
+	-if "word" is not a synonym of any of these directional words, the method does nothing else.
+	*/
+	public void addDirection(String word, ArrayList<Direction> motionTypes, int i) 
+	{ //TODO: REMOVE i!!!
+		/*ALL of the following specifications of indices (used when calling isSynonymOf()) are specific to the WordNet 3.0 database! 
+		They must be changed for future versions of WordNet, as the indices of definitions change. */
+		if (isSynonymOf("diagonal", word, 5, 6) || isSynonymOf("diagonally", word)) //5,6 are the indices in Wordnet 3.0 of the definitions of "diagonal" that denote direction
+		{
+			if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
+				motionTypes.add(Direction.DIAGONAL);
+			System.out.println("Sentence " + i + ": Diagonal motion added."); //debugging
+		}
+		else if (isSynonymOf("forward", word, 3, 6, 7, 9, 11)) //3,6,7,9,11 are the indices in Wordnet 3.0 of the definitions of "forward" that denote direction
+		{
+			if (motionTypes.indexOf(Direction.FORWARD) < 0) 
+				motionTypes.add(Direction.FORWARD);
+			System.out.println("Sentence " + i + ": Forward motion added."); //debugging
+		}
+		else if (isSynonymOf("backward", word, 0, 2, 3)) //0,2,3 are the indices in Wordnet 3.0 of the definitions of "backward" that denote direction
+		{
+			if (motionTypes.indexOf(Direction.BACKWARD) < 0)
+				motionTypes.add(Direction.BACKWARD);
+			System.out.println("Sentence " + i + ": Backward motion added."); //debugging
+		}
+		else if (isSynonymOf("left", word, 19)) //19 is the index in Wordnet 3.0 of the definitions of "left" that denote direction
+		{
+			if (motionTypes.indexOf(Direction.LEFT) < 0)
+				motionTypes.add(Direction.LEFT);
+			System.out.println("Sentence " + i + ": Leftward motion added."); //debugging
+		}
+		else if (isSynonymOf("right", word, 12, 20)) //12,20 are the indices in Wordnet 3.0 of the definitions of "right" that denote direction
+		{
+			if (motionTypes.indexOf(Direction.RIGHT) < 0)
+				motionTypes.add(Direction.RIGHT);
+			System.out.println("Sentence " + i + ": Rightward motion added."); //debugging
+		}
+
 	}
 
 	public enum Direction

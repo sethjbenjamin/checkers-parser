@@ -28,9 +28,9 @@ public class RulesParser
 	{
 		this.fileName = fileName;
 
-		// creates a StanfordCoreNLP object, with sentence splitting, POS tagging, lemmatization, NER, and parsing
+		// creates a StanfordCoreNLP object, with sentence splitting, POS tagging, lemmatization, and parsing
 		Properties annotators = new Properties();
-		annotators.put("annotators", "tokenize, ssplit, pos, lemma, parse");
+		annotators.put("annotators", "tokenize, ssplit, pos, lemma, parse"); //TODO: add NER later to interpret numbers
 		pipeline = new StanfordCoreNLP(annotators);
 
 		wordnet = WordNetDatabase.getFileInstance();
@@ -98,10 +98,10 @@ public class RulesParser
 
 					int verbIndex = Integer.parseInt(d.substring(startIndexNum,endIndexNum));
 
-					//Now we determine the lemma of the verb, and see if it is a synonym of "move" or "jump."
+					//Now we determine the lemma of the verb, and see if "move" is a hypernym of it.
 					String verbLemma = lemmas.get(verbIndex-1); //-1 because the sentence indices start from 1, not 0
 
-					if (isSynonymOf("move", verbLemma) || isSynonymOf("jump", verbLemma))
+					if (isHypernymOf("move", verbLemma))
 					{
 						//We now have to isolate the modifying adverb as a substring.
 						int startIndexAdv = d.indexOf(' ') + 1; //index in "d" of  the first character of the modifying adverb in d
@@ -146,9 +146,9 @@ public class RulesParser
 	}
 
 	/**
-	Tests if "second" is a synonym of "first" by seeing if "second" is one of the 
+	Tests if "first" and "second" are synonyms by seeing if "second" is one of the 
 	word forms given in specified WordNet synsets of "first." The parameter "indices"
-	specifies the indices of which specific synsets are to be checked.
+	specifies the indices of which specific synsets of "first" are to be checked.
 	*/
 	public boolean isSynonymOf(String first, String second, int... indices)
 	{
@@ -156,7 +156,7 @@ public class RulesParser
 		Synset[] firstSynsetsDesired; //this array will hold only the desired synsets of "first" (specified by "indices")
 
 		int i = 0;
-		if (indices.length > 0)
+		if (indices.length > 0) //if indices are specified
 		{
 			firstSynsetsDesired = new Synset[indices.length]; 
 			for (int ind: indices)
@@ -166,14 +166,38 @@ public class RulesParser
 				i++;
 			}
 		}
-		else
-			firstSynsetsDesired = firstSynsetsAll; //if no indices are specified, default to check all synsets
+		else // if no indices are specified
+			firstSynsetsDesired = firstSynsetsAll; //default to check all synsets
 
 		for (Synset synset: firstSynsetsDesired)
 		{
 			String[] synonyms = synset.getWordForms();
-			if (Arrays.asList(synonyms).contains(second))
+			if (Arrays.asList(synonyms).contains(second)) //if second is one of the Strings in "synonyms"
 				return true;
+		}
+		return false;
+	}
+
+	/**
+	Tests if "first" is a hypernym of "second" by seeing if "first" is one of the
+	hypernyms listed in WordNet of any VerbSynset containing "second".
+	*/
+	public boolean isHypernymOf(String first, String second)
+	{
+		Synset[] secondSynsets = wordnet.getSynsets(second, SynsetType.VERB);
+		//we can only call getHypernyms() from VerbSynsets, not Synsets, so we have to do some casting
+		VerbSynset[] secondVerbSynsets = Arrays.copyOf(secondSynsets, secondSynsets.length, VerbSynset[].class);
+		//secondVerbSynsets contains all verb definitions of second
+
+		for (VerbSynset defintion: secondVerbSynsets) 
+		{
+			VerbSynset[] hypernymSynsets = defintion.getHypernyms(); //hypernymSynsets contains all synsets containing hypernyms of second
+			for (VerbSynset hypernymSynset: hypernymSynsets)
+			{
+				String[] wordForms = hypernymSynset.getWordForms(); //wordForms contains individual words that are hypernyms of second
+				if (Arrays.asList(wordForms).contains(first)) // if first is one of the Strings in "wordForms"
+					return true;
+			}
 		}
 		return false;
 	}
@@ -182,10 +206,11 @@ public class RulesParser
 	Used by parseMotion() to update an ArrayList containing the allowed types of motion for a piece.
 	Given a reference to a String "word" and an ArrayList<Direction> "motionTypes" holding certain Directions (representing the allowed
 	types of motion for a piece), this method does the following:
-	-if "word" is a synonym of any of the directional words "diagonal"/"diagonally", "forward," "backward," "left," and "right,"
-	the method then checks if whatever direction "word" entails has been added to "motionTypes" yet. If it has not, the method
-	adds that direction to "motionTypes."; if it has, the method does nothing else.
-	-if "word" is not a synonym of any of these directional words, the method does nothing else.
+	-Checks if "word" is a synonym of any of the directional words "diagonal"/"diagonally", "forward," "backward," "left," and "right." 
+	  -If "word" is not a synonym of any of these directional words, the method does nothing else.
+	  -If it is, the method then checks if whatever direction "word" entails has been added to "motionTypes" yet. 
+	    -If it has not yet been added, the method adds that direction to "motionTypes."
+	    -If it has already been added, the method does nothing else.
 	*/
 	public void addDirection(String word, ArrayList<Direction> motionTypes, int i) 
 	{ //TODO: REMOVE i!!!

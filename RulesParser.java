@@ -88,10 +88,10 @@ public class RulesParser
 			//iterate over all dependencies, searching for certain types
 			for (String d: dependencies)
 			{
-				if (d.contains("advmod"))
+				if (d.contains("advmod")) // check for adverbs modifying verbs
 				{
-					/* We want to determine if the verb being modified by an adverb is any synonym of the lexeme "move" or "jump", so we first 
-					have to determine what the verb is. To do this, we isolate the verb's index in the sentence as a substring of the 
+					/* We want to determine if the verb being modified by an adverb is any hyponym of the verb "move", so we first 
+					have to determine what the verb's lemma is. To do this, we isolate the verb's index in the sentence as a substring of the 
 					dependency string. */
 					int endIndexNum = d.indexOf(","); //index in "d" of the comma immediately following the modified verb's index
 					int startIndexNum = d.lastIndexOf("-", endIndexNum) + 1; //index in "d" of the first digit of the modified verb's index in "current"
@@ -104,8 +104,8 @@ public class RulesParser
 					if (isHypernymOf("move", verbLemma))
 					{
 						//We now have to isolate the modifying adverb as a substring.
-						int startIndexAdv = d.indexOf(' ') + 1; //index in "d" of  the first character of the modifying adverb in d
-						int endIndexAdv = d.lastIndexOf('-'); //index in "d" of hyphen immediately following modifying adverb in d
+						int startIndexAdv = d.indexOf(" ") + 1; //index in "d" of the first character of the modifying adverb
+						int endIndexAdv = d.lastIndexOf("-"); //index in "d" of hyphen immediately following modifying adverb
 
 						String adverb = d.substring(startIndexAdv,endIndexAdv);
 
@@ -114,10 +114,12 @@ public class RulesParser
 						addDirection(adverb, motionTypes, i); //TODO: remove i!!!
 					}
 				}
-				else if (d.contains("amod"))
+				else if (d.contains("amod")) //check for adjectives modifying nouns
 				{
-					/* We want to determine if the noun being modified by an adjective is any synonym of the lexemes "move (n)" or "direction (n)", 
-					so we have to isolate the noun's index in the sentence as a substring of the dependency string. */
+					/* We want to determine if the noun being modified by an adjective is any synonym of the lexemes 
+					"move (n)" or "direction (n)", so we first have to determine what the noun's lemma is. To do this, 
+					we isolate the noun's index in the sentence as a substring of the dependency string. */
+
 					int endIndexNum = d.indexOf(","); //index in "d" of the comma immediately following the modified noun's index
 					int startIndexNum = d.lastIndexOf("-", endIndexNum) + 1; //index in "d" of the first digit of the modified noun's index in "current"
 
@@ -129,8 +131,8 @@ public class RulesParser
 					if (isSynonymOf("move", nounLemma) || isSynonymOf("direction", nounLemma))
 					{
 						//We now isolate the modifiying adjective as a substring.
-						int startIndexAdj = d.indexOf(' ') + 1; //index in the first character of the modifying adjective in d
-						int endIndexAdj = d.lastIndexOf('-'); //index of hyphen immediately following modifying adjective in d
+						int startIndexAdj = d.indexOf(" ") + 1; //index in d of the first character of the modifying adjective
+						int endIndexAdj = d.lastIndexOf("-"); //index in d of hyphen immediately following modifying adjective
 
 						String adjective = d.substring(startIndexAdj, endIndexAdj);
 						
@@ -139,6 +141,42 @@ public class RulesParser
 						addDirection(adjective, motionTypes, i); //TODO: remove i!!!
 					}
 
+				}
+				else if (d.contains("nmod:toward")) //check for a PP like "toward the opponent"
+				{
+					/*First we have to check if the word being modified by the PP is a hyponym of the verb "move," or a synonym of the nouns 
+					"move" or "direction."
+					Again, to determine what the modified word is, we have to isolate its index in the sentence as a substring of the 
+					dependency string. */
+					int endIndexNum = d.indexOf(","); //index in d of the comma immediately following the modified word's index
+					int startIndexNum = d.lastIndexOf("-", endIndexNum) + 1; //index in d of the first digit of the modified word's index in "current"
+
+					int wordIndex = Integer.parseInt(d.substring(startIndexNum,endIndexNum));
+
+					//Now we determine the lemma of the modified word, and see if "move" is a hypernym of it
+					String lemma = lemmas.get(wordIndex-1); //-1 because the sentence indices start from 1, not 0 
+
+					if (isHypernymOf("move", lemma) || isSynonymOf("direction", lemma) || isSynonymOf("move", lemma))
+					{
+						/*At this point, we have determined that the phrase we are looking at is a PP of the form "toward/towards [DP]" 
+						modifying some hyponym of "move." Now we have to determine the object of the proposition, and what direction of motion
+						this object implies. 
+						For now, since it is the only such phrase that occurs in our 10 sample rulesets, the only object of "toward"/"towards"
+						that we will consider is the noun "opponent." This entails forward motion: "checkers can only move toward the opponent" 
+						is equivalent to "checkers can only move forward". */
+
+						int startIndexNoun = d.indexOf(" ")+1; //index in "d" of the first character of the object of "toward"
+						int endIndexNoun = d.lastIndexOf("-"); //index in "d" of the hyphen immediately following the object of "toward"
+
+						String noun = d.substring(startIndexNoun, endIndexNoun);
+						if (isSynonymOf("opponent", noun))
+						{
+							if (motionTypes.indexOf(Direction.FORWARD) < 0)
+								motionTypes.add(Direction.FORWARD);
+							System.out.println("Sentence " + i + ": Forward motion added, as a modifying PP."); //debugging
+
+						}
+					}
 				}
 			}
 		}

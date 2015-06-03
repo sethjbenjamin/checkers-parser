@@ -101,7 +101,12 @@ public class RulesParser
 					//Now we determine the lemma of the verb, and see if "move" is a hypernym of it.
 					String verbLemma = lemmas.get(verbIndex-1); //-1 because the sentence indices start from 1, not 0
 
-					if (isHypernymOf("move", verbLemma))
+					/* Stanford CoreNLP has a strange bug in which a sentence such as the following: "Kings move forward and backwards."
+					will not produce the dependencies "advmod(move, forward)" and "advmod(move,backward)" as expected, but will instead 
+					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
+					So, in addition to checking if verbLemma is a hyponym of "move", we have to check if it's a coordinating conjunction, too,
+					since our example sentence is one of the more common ways English language rulesets describe the motion of kings. */
+					if (isHypernymOf("move", verbLemma) || verbLemma.equals("or") || (verbLemma.equals("and")))
 					{
 						//We now have to isolate the modifying adverb as a substring.
 						int startIndexAdv = d.indexOf(" ") + 1; //index in "d" of the first character of the modifying adverb

@@ -61,7 +61,7 @@ public class RulesParser
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
 		ArrayList<Direction> motionTypes = parseMotion();
-
+		
 		
 	}
 
@@ -72,7 +72,7 @@ public class RulesParser
 
 		for (int i = 0; i < sentences.size(); i++)
 		{
-			CoreMap current = sentences.get(i);
+			CoreMap current = sentences.get(i); //the current sentence
 
 			//We create an ArrayList of the lemmas of each word in "current", stored as Strings.
 			ArrayList<String> lemmas = new ArrayList<String>(1);
@@ -93,26 +93,20 @@ public class RulesParser
 					/* We want to determine if the verb being modified by an adverb is any hyponym of the verb "move", so we first 
 					have to determine what the verb's lemma is. To do this, we isolate the verb's index in the sentence as a substring of the 
 					dependency string. */
-					int endIndexNum = d.indexOf(","); //index in "d" of the comma immediately following the modified verb's index
-					int startIndexNum = d.lastIndexOf("-", endIndexNum) + 1; //index in "d" of the first digit of the modified verb's index in "current"
-
-					int verbIndex = Integer.parseInt(d.substring(startIndexNum,endIndexNum));
+					int verbIndex = isolateIndexFromDependency(d, 1); //the verb is the first word in the dependency substring
 
 					//Now we determine the lemma of the verb, and see if "move" is a hypernym of it.
 					String verbLemma = lemmas.get(verbIndex-1); //-1 because the sentence indices start from 1, not 0
 
 					/* Stanford CoreNLP has a strange bug in which a sentence such as the following: "Kings move forward and backwards."
-					will not produce the dependencies "advmod(move, forward)" and "advmod(move,backward)" as expected, but will instead 
+					will not produce the dependencies "advmod(move, forward)" and "advmod(move, backward)" as expected, but will instead 
 					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
 					So, in addition to checking if verbLemma is a hyponym of "move", we have to check if it's a coordinating conjunction, too,
 					since our example sentence is one of the more common ways English language rulesets describe the motion of kings. */
 					if (isHypernymOf("move", verbLemma) || verbLemma.equals("or") || (verbLemma.equals("and")))
 					{
 						//We now have to isolate the modifying adverb as a substring.
-						int startIndexAdv = d.indexOf(" ") + 1; //index in "d" of the first character of the modifying adverb
-						int endIndexAdv = d.lastIndexOf("-"); //index in "d" of hyphen immediately following modifying adverb
-
-						String adverb = d.substring(startIndexAdv,endIndexAdv);
+						String adverb = isolateWordFromDependency(d,2); //the adverb is the second word in the dependency substring
 
 						/*Now, we call addDirection() to check if "adverb" is a directional adverb, and if so, to
 						add it to "motionTypes". */
@@ -124,11 +118,7 @@ public class RulesParser
 					/* We want to determine if the noun being modified by an adjective is any synonym of the lexemes 
 					"move (n)" or "direction (n)", so we first have to determine what the noun's lemma is. To do this, 
 					we isolate the noun's index in the sentence as a substring of the dependency string. */
-
-					int endIndexNum = d.indexOf(","); //index in "d" of the comma immediately following the modified noun's index
-					int startIndexNum = d.lastIndexOf("-", endIndexNum) + 1; //index in "d" of the first digit of the modified noun's index in "current"
-
-					int nounIndex = Integer.parseInt(d.substring(startIndexNum,endIndexNum));
+					int nounIndex = isolateIndexFromDependency(d, 1); //the noun is the first word in the dependency substring
 
 					//Now we determine the lemma of the noun, and see if it is a synonym of "move" or "direction."
 					String nounLemma = lemmas.get(nounIndex-1); //-1 because the sentence indices start from 1, not 0
@@ -136,10 +126,7 @@ public class RulesParser
 					if (isSynonymOf("move", nounLemma) || isSynonymOf("direction", nounLemma))
 					{
 						//We now isolate the modifiying adjective as a substring.
-						int startIndexAdj = d.indexOf(" ") + 1; //index in d of the first character of the modifying adjective
-						int endIndexAdj = d.lastIndexOf("-"); //index in d of hyphen immediately following modifying adjective
-
-						String adjective = d.substring(startIndexAdj, endIndexAdj);
+						String adjective = isolateWordFromDependency(d, 2); //the adjective is the second word in the dependency substring
 						
 						/*Now, we call addDirection() to check if "adjective" is a directional adjective, and if so, to
 						add it to "motionTypes". */
@@ -153,10 +140,7 @@ public class RulesParser
 					"move" or "direction."
 					Again, to determine what the modified word is, we have to isolate its index in the sentence as a substring of the 
 					dependency string. */
-					int endIndexNum = d.indexOf(","); //index in d of the comma immediately following the modified word's index
-					int startIndexNum = d.lastIndexOf("-", endIndexNum) + 1; //index in d of the first digit of the modified word's index in "current"
-
-					int wordIndex = Integer.parseInt(d.substring(startIndexNum,endIndexNum));
+					int wordIndex = isolateIndexFromDependency(d,1); //the word is the first word in the dependency substring
 
 					//Now we determine the lemma of the modified word, and see if "move" is a hypernym of it
 					String lemma = lemmas.get(wordIndex-1); //-1 because the sentence indices start from 1, not 0 
@@ -169,11 +153,7 @@ public class RulesParser
 						For now, since it is the only such phrase that occurs in our 10 sample rulesets, the only object of "toward"/"towards"
 						that we will consider is the noun "opponent." This entails forward motion: "checkers can only move toward the opponent" 
 						is equivalent to "checkers can only move forward". */
-
-						int startIndexNoun = d.indexOf(" ")+1; //index in "d" of the first character of the object of "toward"
-						int endIndexNoun = d.lastIndexOf("-"); //index in "d" of the hyphen immediately following the object of "toward"
-
-						String noun = d.substring(startIndexNoun, endIndexNoun);
+						String noun = isolateWordFromDependency(d,2); //the verb is the second word in the dependency substring
 						if (isSynonymOf("opponent", noun))
 						{
 							if (motionTypes.indexOf(Direction.FORWARD) < 0)
@@ -187,6 +167,61 @@ public class RulesParser
 		}
 		return motionTypes;
 	}
+
+	/**
+	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
+	this method isolates and returns either "word1" or "word2" as a String, depending on if whichWord equals 1 or 2 respectively.
+	Returns null if whichWord does not equal 1 or 2.
+	*/
+	public String isolateWordFromDependency(String dependency, int whichWord)
+	{
+		int startIndex, endIndex;
+		String word;
+
+		switch (whichWord)
+		{
+			case 1:
+				startIndex = dependency.indexOf("(") + 1; //index in dependency string of the first character of the first word
+				endIndex = dependency.lastIndexOf("-", dependency.indexOf(",")); //index in dependency string of hyphen immediately following first word
+				word = dependency.substring(startIndex, endIndex);
+				return word;
+			case 2: 
+				startIndex = dependency.indexOf(" ") + 1; //index in dependency string of the first character of the second word
+				endIndex = dependency.lastIndexOf("-"); //index in dependency string of hyphen immediately following second word
+				word = dependency.substring(startIndex, endIndex);
+				return word;
+			default: //whichWord can only equal 1 or 2, because a dependency string necessarily only contains two words
+				return null;
+		}
+	}
+
+	/**
+	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
+	this method isolates and returns either "index1" or "index2", depending on if whichIndex equals 1 or 2 respectively.
+	Returns -1 if whichWord does not equal 1 or 2.
+	*/
+	public int isolateIndexFromDependency(String dependency, int whichIndex)
+	{
+		int startIndex, endIndex;
+		int isolatedIndex;
+
+		switch (whichIndex)
+		{
+			case 1:
+				endIndex = dependency.indexOf(","); //index in dependecy string of the comma immediately following the first index
+				startIndex = dependency.lastIndexOf("-", endIndex) + 1; //index in dependency string of the first digit of of the first index
+				isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
+				return isolatedIndex;
+			case 2: 
+				startIndex = dependency.lastIndexOf("-") + 1; //index in dependency string of the first digit of the second index
+				endIndex = dependency.indexOf(")"); //index in dependency string of the right parenthesis immediately following the second index
+				isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
+				return isolatedIndex;
+			default: //whichIndex can only equal 1 or 2, because a dependency string necessarily only contains 2 words (and therefore 2 indices)
+				return -1;
+		}
+	}
+
 
 	/**
 	Tests if "first" and "second" are synonyms by seeing if "second" is one of the 

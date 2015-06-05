@@ -9,7 +9,6 @@ import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.pipeline.*;
 import edu.stanford.nlp.semgraph.SemanticGraph;
 import edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations;
-import edu.stanford.nlp.trees.*;
 import edu.stanford.nlp.util.*;
 
 import edu.smu.tspell.wordnet.*;
@@ -62,8 +61,6 @@ public class RulesParser
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
 		ArrayList<Direction> motionTypes = parseMotion();
-		System.out.println(motionTypes.size());
-		
 		
 	}
 
@@ -94,51 +91,42 @@ public class RulesParser
 			//iterate over all dependencies, searching for certain types
 			for (String d: dependencies)
 			{
-				if (d.contains("advmod")) // check for adverbs modifying verbs
+				if (d.contains("advmod") || d.contains("amod")) // check for adverbs modifying verbs, or adjectives modifying nouns
 				{
-					/* We want to determine if the verb being modified by an adverb is any hyponym of the verb "move", so we first 
-					have to determine what the verb's lemma is. To do this, we isolate the verb's index in the sentence as a substring of the 
-					dependency string. */
-					int verbIndex = isolateIndexFromDependency(d, 1); //the verb is the first word in the dependency substring
+					/* We want to determine if the word being modified is any hyponym of the verb "move" being modified by a
+					directional adverb, or any synonym of the nouns "move" and "direction" being modified by a directional adjective. 
+					We first have to determine what the modified word's lemma is. 
+					To do this, we isolate the word's index in the sentence as a substring of the dependency string. */
+					int modifiedIndex = isolateIndexFromDependency(d, 1); //the word is the first word in the dependency substring
 
-					//Now we determine the lemma of the verb, and see if "move" is a hypernym of it.
-					String verbLemma = lemmas.get(verbIndex-1); //-1 because the sentence indices start from 1, not 0
+					//Now we determine the lemma of the modified word.
+					String modified = lemmas.get(modifiedIndex-1); //-1 because the sentence indices start from 1, not 0
 
-					/* Stanford CoreNLP has a strange bug in which a sentence such as the following: "Kings move forward and backwards."
+					/*Now that we have the modified word's lemma, we determine if it is either:
+					-a hypernym of "move (v)"
+					-a synonym of "move (n)" or "direction (n)"
+					In a previous implementation, these dependencies (advmod and amod) were checked separately; checking for either at the same time
+					as we are now actually allows not only for constructions in which directional adverbs modify verbs and directional adjectives 
+					modify nouns, but also for those in which directional adverbs modify nouns and directional adjectives modify verbs. 
+					This is grammatically impossible in Standard English, but Stanford CoreNLP often incorrectly analyzes sentences as 
+					having such constructions, so checking for them gets better results.
+
+					Additionally, Stanford CoreNLP has a strange bug in which a sentence such as the following: 
+					"Kings move forward and backwards."
 					will not produce the dependencies "advmod(move, forward)" and "advmod(move, backward)" as expected, but will instead 
 					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
-					So, in addition to checking if verbLemma is a hyponym of "move", we have to check if it's a coordinating conjunction, too,
-					since our example sentence is one of the more common ways English language rulesets describe the motion of kings. */
-					if (isHypernymOf("move", verbLemma) || verbLemma.equals("or") || (verbLemma.equals("and")))
+					Since our example sentence is one of the more common ways English language rulesets describe the motion of kings,
+					we must also check if modified is:
+					-a coordinating conjunction like "and" or "or" */
+					if (isHypernymOf("move", modified) || isSynonymOf("move", modified) || isSynonymOf("direction", modified) || modified.equals("or") || (modified.equals("and")))
 					{
-						//We now have to isolate the modifying adverb as a substring.
-						String adverb = isolateWordFromDependency(d,2); //the adverb is the second word in the dependency substring
+						//We now have to isolate the modifier as a substring.
+						String modifier = isolateWordFromDependency(d,2); //the modifier is the second word in the dependency substring
 
-						/*Now, we call addDirection() to check if "adverb" is a directional adverb, and if so, to
+						/*Now, we call addDirection() to check if "modifier" is a directional adverb or adjective, and if so, to
 						add it to "motionTypes". */
-						addDirection(adverb, motionTypes, i); //TODO: remove i!!!
+						addDirection(modifier, motionTypes, i); //TODO: remove i!!!
 					}
-				}
-				else if (d.contains("amod")) //check for adjectives modifying nouns
-				{
-					/* We want to determine if the noun being modified by an adjective is any synonym of the lexemes 
-					"move (n)" or "direction (n)", so we first have to determine what the noun's lemma is. To do this, 
-					we isolate the noun's index in the sentence as a substring of the dependency string. */
-					int nounIndex = isolateIndexFromDependency(d, 1); //the noun is the first word in the dependency substring
-
-					//Now we determine the lemma of the noun, and see if it is a synonym of "move" or "direction."
-					String nounLemma = lemmas.get(nounIndex-1); //-1 because the sentence indices start from 1, not 0
-
-					if (isSynonymOf("move", nounLemma) || isSynonymOf("direction", nounLemma))
-					{
-						//We now isolate the modifiying adjective as a substring.
-						String adjective = isolateWordFromDependency(d, 2); //the adjective is the second word in the dependency substring
-						
-						/*Now, we call addDirection() to check if "adjective" is a directional adjective, and if so, to
-						add it to "motionTypes". */
-						addDirection(adjective, motionTypes, i); //TODO: remove i!!!
-					}
-
 				}
 				else if (d.contains("nmod:toward")) //check for a PP like "toward the opponent"
 				{
@@ -192,29 +180,10 @@ public class RulesParser
 			String d = dependencies[i];			
 			if (isolateWordWithIndex(d,1).equals(negatedWordWithIndex))
 			{
-				/*String word1 = isolateWordFromDependency(d, 1);
-				String word2 = isolateWordFromDependency(d, 2);
-				String otherWord, otherWordWithIndex;
-				if (word1.equals(negatedWord))
-				{
-					otherWord = word2;
-					otherWordWithIndex = otherWord + "-" + isolateIndexFromDependency(d,2); 
-					//must include index in case the same word appears twice in the sentence, but only one is within the scope of a negation word
-				}
-				else 
-				{
-					otherWord = word1;
-					wordWithIndex = otherWord + "-" + isolateIndexFromDependency(d,1);
-				}*/
 				String dependent = isolateWordFromDependency(d,2);
 				String dependentWithIndex = isolateWordWithIndex(d,2);
 				addDirection(dependent, negatedDirections, -1); //TODO: remove i
-				/*if (d.contains("conj:") || d.contains("nmod") || d.contains("dobj"))
-				{
-					String[] dependenciesClone = dependencies.clone();
-					dependenciesClone[i] = "";
-					parseNegatedDirections(dependenciesClone, otherWordWithIndex, negatedDirections);
-				}*/
+
 				String[] truncatedDependencies = new String[dependencies.length-1];
 				for (int j = 0; j < dependencies.length - 1; j++)
 				{

@@ -9,6 +9,7 @@ import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.pipeline.*;
 import edu.stanford.nlp.semgraph.SemanticGraph;
 import edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations;
+import edu.stanford.nlp.trees.*;
 import edu.stanford.nlp.util.*;
 
 import edu.smu.tspell.wordnet.*;
@@ -61,6 +62,7 @@ public class RulesParser
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
 		ArrayList<Direction> motionTypes = parseMotion();
+		System.out.println(motionTypes.size());
 		
 		
 	}
@@ -69,19 +71,23 @@ public class RulesParser
 	{
 		ArrayList<Direction> motionTypes = new ArrayList<Direction>(1); 
 		//ultimately, this ArrayList will hold all of the allowed types of motion explicitly described in the ruleset
+		ArrayList<Direction> negatedDirections = new ArrayList<Direction>(1);
+		/*ultimately, this ArrayList will old all of the types of motion described in a ruleset that are within the scope of a 
+		negation word; the internal logic of parseMotion() does not distinguish between negated clauses and regular ones, so they must be 
+		interpreted separately and then removed from motionTypes. */
 
 		for (int i = 0; i < sentences.size(); i++)
 		{
-			CoreMap current = sentences.get(i); //the current sentence
+			CoreMap sentence = sentences.get(i); //the current sentence
 
-			//We create an ArrayList of the lemmas of each word in "current", stored as Strings.
+			//We create an ArrayList of the lemmas of each word in "sentence", stored as Strings.
 			ArrayList<String> lemmas = new ArrayList<String>(1);
-			for(CoreMap token: current.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
+			for(CoreMap token: sentence.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
 				lemmas.add(token.get(CoreAnnotations.LemmaAnnotation.class)); //add its lemma to the ArrayList
 
-			//Now we create an array of the syntactic dependencies of "current"
-			//the next line simply initializes "dependeciesString" with a String containing all the dependencies of "current"
-			String dependenciesString = current.get(
+			//Now we create an array of the syntactic dependencies of "sentence"
+			//the next line simply initializes "dependeciesString" with a String containing all the dependencies of "sentence"
+			String dependenciesString = sentence.get(
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(SemanticGraph.OutputFormat.LIST);
 			String[] dependencies = dependenciesString.split("\n"); //split the String into an array, one dependency per index in the array
 
@@ -140,7 +146,7 @@ public class RulesParser
 					"move" or "direction."
 					Again, to determine what the modified word is, we have to isolate its index in the sentence as a substring of the 
 					dependency string. */
-					int wordIndex = isolateIndexFromDependency(d,1); //the word is the first word in the dependency substring
+					int wordIndex = isolateIndexFromDependency(d,1); //the modified word is the first word in the dependency substring
 
 					//Now we determine the lemma of the modified word, and see if "move" is a hypernym of it
 					String lemma = lemmas.get(wordIndex-1); //-1 because the sentence indices start from 1, not 0 
@@ -163,9 +169,64 @@ public class RulesParser
 						}
 					}
 				}
+				else if (d.contains("neg"))
+				{
+					String negatedWordWithIndex = isolateWordWithIndex(d,1);
+					parseNegatedDirections(dependencies, negatedWordWithIndex, negatedDirections);
+				}
 			}
 		}
+		for (Direction d: negatedDirections)
+			motionTypes.remove(d);
 		return motionTypes;
+	}
+
+	public void parseNegatedDirections(String[] dependencies, String negatedWordWithIndex, ArrayList<Direction> negatedDirections)
+	{
+		/*PROBLEM!!! TODO! This method so far just nixes every single word touched by a negation word. Doesn't check for any of the 
+		stuff parseMotion() checks for. Might be a problem eventually. */
+		String negatedWord = negatedWordWithIndex.substring(0, negatedWordWithIndex.indexOf("-"));
+		addDirection(negatedWord, negatedDirections, -1);
+		for (int i = 0; i < dependencies.length; i++)
+		{
+			String d = dependencies[i];			
+			if (isolateWordWithIndex(d,1).equals(negatedWordWithIndex))
+			{
+				/*String word1 = isolateWordFromDependency(d, 1);
+				String word2 = isolateWordFromDependency(d, 2);
+				String otherWord, otherWordWithIndex;
+				if (word1.equals(negatedWord))
+				{
+					otherWord = word2;
+					otherWordWithIndex = otherWord + "-" + isolateIndexFromDependency(d,2); 
+					//must include index in case the same word appears twice in the sentence, but only one is within the scope of a negation word
+				}
+				else 
+				{
+					otherWord = word1;
+					wordWithIndex = otherWord + "-" + isolateIndexFromDependency(d,1);
+				}*/
+				String dependent = isolateWordFromDependency(d,2);
+				String dependentWithIndex = isolateWordWithIndex(d,2);
+				addDirection(dependent, negatedDirections, -1); //TODO: remove i
+				/*if (d.contains("conj:") || d.contains("nmod") || d.contains("dobj"))
+				{
+					String[] dependenciesClone = dependencies.clone();
+					dependenciesClone[i] = "";
+					parseNegatedDirections(dependenciesClone, otherWordWithIndex, negatedDirections);
+				}*/
+				String[] truncatedDependencies = new String[dependencies.length-1];
+				for (int j = 0; j < dependencies.length - 1; j++)
+				{
+					if (j > i)
+						truncatedDependencies[j] = dependencies[j];
+					else
+						truncatedDependencies[j] = dependencies[j+1];
+				}
+				//after this loop, truncatedDependencies contains all the values of dependencies except d
+				parseNegatedDirections(truncatedDependencies, dependentWithIndex, negatedDirections);
+			}
+		}		
 	}
 
 	/**
@@ -220,6 +281,19 @@ public class RulesParser
 			default: //whichIndex can only equal 1 or 2, because a dependency string necessarily only contains 2 words (and therefore 2 indices)
 				return -1;
 		}
+	}
+
+	/**
+	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
+	this method isolates and returns either "word1-index1" or "word2-index2", depending on if whichWord equals 1 or 2 respectively.
+	Returns null if whichWord does not equal 1 or 2.
+	*/
+	public String isolateWordWithIndex(String dependency, int whichWord)
+	{
+		if (whichWord == 1 || whichWord == 2)
+			return isolateWordFromDependency(dependency, whichWord) + "-" + isolateIndexFromDependency(dependency, whichWord);
+		else
+			return null;
 	}
 
 

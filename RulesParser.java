@@ -1,7 +1,9 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import edu.stanford.nlp.io.*;
@@ -55,13 +57,69 @@ public class RulesParser
 	public void parse()
 	{
 		readFile();
+
 		for (int i = 0; i < sentences.size(); i++) //debugging
 		{
 			CoreMap current = sentences.get(i);
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
-		ArrayList<Direction> motionTypes = parseMotion();
-		
+		//ArrayList<Direction> motionTypes = parseMotion();
+		parsePieceTypes();
+	}
+
+	public void parsePieceTypes()
+	{ //TODO make this not void!
+		HashMap<String,Integer> moveArguments = new HashMap<String,Integer>();
+
+		for (int i = 0; i < sentences.size(); i++)
+		{
+			CoreMap current = sentences.get(i);
+
+			ArrayList<String> lemmas = new ArrayList<String>(1);
+			for(CoreMap token: current.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
+			{
+				String lemma = token.get(CoreAnnotations.LemmaAnnotation.class);
+				lemmas.add(lemma); //add its lemma to the ArrayList
+				if (!moveArguments.containsKey(lemma)) //if the lemma isn't in the hashmap,
+					moveArguments.put(lemma, 0); //add it to the hashmap
+			}
+
+			String[] dependencies = current.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+				SemanticGraph.OutputFormat.LIST).split("\n");
+
+			for (int j = 1; j < dependencies.length; j++)
+			{
+				String d = dependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas.get(index1-1);
+				String lemma2 = lemmas.get(index2-1);
+				//if (isHypernymOf("move", lemma1) || isHypernymOf("move", lemma2))
+				if (isSynonymOf("move", lemma1)) //TODO: force lemma2 to be a noun that is not people!
+				{
+					System.out.println("Sentence " + i + ": " + d);
+					moveArguments.put(lemma2, moveArguments.get(lemma2)+1);
+				}
+				else if (isSynonymOf("move", lemma2))
+				{
+					System.out.println("Sentence " + i + ": " + d);
+					moveArguments.put(lemma1, moveArguments.get(lemma1)+1);
+				}
+			}
+		}
+		int maxValue = -1;
+		String mostFrequentArgument = "";
+		for (Map.Entry<String,Integer> entry: moveArguments.entrySet())
+		{
+			if (maxValue < entry.getValue())
+			{
+				maxValue = entry.getValue();
+				mostFrequentArgument = entry.getKey();
+			}
+		}
+		System.out.println(mostFrequentArgument); //debugging
+
 	}
 
 	public ArrayList<Direction> parseMotion()
@@ -105,6 +163,7 @@ public class RulesParser
 					/*Now that we have the modified word's lemma, we determine if it is either:
 					-a hypernym of "move (v)"
 					-a synonym of "move (n)" or "direction (n)"
+					-a coordinating conjunction (explained below)
 					In a previous implementation, these dependencies (advmod and amod) were checked separately; checking for either at the same time
 					as we are now actually allows not only for constructions in which directional adverbs modify verbs and directional adjectives 
 					modify nouns, but also for those in which directional adverbs modify nouns and directional adjectives modify verbs. 
@@ -116,9 +175,8 @@ public class RulesParser
 					will not produce the dependencies "advmod(move, forward)" and "advmod(move, backward)" as expected, but will instead 
 					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
 					Since our example sentence is one of the more common ways English language rulesets describe the motion of kings,
-					we must also check if modified is:
-					-a coordinating conjunction like "and" or "or" */
-					if (isHypernymOf("move", modified) || isSynonymOf("move", modified) || isSynonymOf("direction", modified) || modified.equals("or") || (modified.equals("and")))
+					we must also check if modified is a coordinating conjunction. */
+					if (isHypernymOf("move", modified) || isSynonymOf("move", modified) || isSynonymOf("direction", modified) || isCoordinatingConjunction(modified))
 					{
 						//We now have to isolate the modifier as a substring.
 						String modifier = isolateWordFromDependency(d,2); //the modifier is the second word in the dependency substring
@@ -160,6 +218,8 @@ public class RulesParser
 				else if (d.contains("neg"))
 				{
 					String negatedWordWithIndex = isolateWordWithIndex(d,1);
+					String negatedWord = negatedWordWithIndex.substring(0, negatedWordWithIndex.indexOf("-"));
+					addDirection(negatedWord, negatedDirections, -1);
 					parseNegatedDirections(dependencies, negatedWordWithIndex, negatedDirections);
 				}
 			}
@@ -174,7 +234,7 @@ public class RulesParser
 		/*PROBLEM!!! TODO! This method so far just nixes every single word touched by a negation word. Doesn't check for any of the 
 		stuff parseMotion() checks for. Might be a problem eventually. */
 		String negatedWord = negatedWordWithIndex.substring(0, negatedWordWithIndex.indexOf("-"));
-		addDirection(negatedWord, negatedDirections, -1);
+
 		for (int i = 0; i < dependencies.length; i++)
 		{
 			String d = dependencies[i];			
@@ -321,6 +381,16 @@ public class RulesParser
 			}
 		}
 		return false;
+	}
+
+	/**
+	Tests if a word stored in a String is a coordinating conjunction. 
+	Helpful to know because CoreNLP is bad at dealing with coordinating conjunctions.
+	*/
+	public boolean isCoordinatingConjunction(String word)
+	{
+		return word.equals("for") || word.equals("and") || word.equals("nor") || 
+		word.equals("but") || word.equals("or") || word.equals("yet") || word.equals("so");
 	}
 
 	/**

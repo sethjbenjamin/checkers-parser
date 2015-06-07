@@ -76,10 +76,13 @@ public class RulesParser
 			CoreMap current = sentences.get(i);
 
 			ArrayList<String> lemmas = new ArrayList<String>(1);
+			ArrayList<String> partsOfSpeech = new ArrayList<String>(1);
 			for(CoreMap token: current.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
 			{
 				String lemma = token.get(CoreAnnotations.LemmaAnnotation.class);
+				String pos = token.get(CoreAnnotations.PartOfSpeechAnnotation.class);
 				lemmas.add(lemma); //add its lemma to the ArrayList
+				partsOfSpeech.add(pos);
 				if (!moveArguments.containsKey(lemma)) //if the lemma isn't in the hashmap,
 					moveArguments.put(lemma, 0); //add it to the hashmap
 			}
@@ -95,16 +98,25 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d,2);
 				String lemma1 = lemmas.get(index1-1);
 				String lemma2 = lemmas.get(index2-1);
-				//if (isHypernymOf("move", lemma1) || isHypernymOf("move", lemma2))
-				if (isSynonymOf("move", lemma1)) //TODO: force lemma2 to be a noun that is not people!
+				//if (isSynonymOf("move", lemma1)) //TODO: force lemma2 to be a noun that is not people!
+				if (isHypernymOf("move", lemma1))
 				{
-					System.out.println("Sentence " + i + ": " + d);
-					moveArguments.put(lemma2, moveArguments.get(lemma2)+1);
+					String pos2 = partsOfSpeech.get(index2-1); //POS of lemma2
+					if (pos2.charAt(0) == 'N') //only considering it if it's a noun
+					{
+						System.out.println("Sentence " + i + ": " + d); //debugging
+						moveArguments.put(lemma2, moveArguments.get(lemma2)+1);
+					}
 				}
-				else if (isSynonymOf("move", lemma2))
+				//else if (isSynonymOf("move", lemma2))
+				else if (isHypernymOf("move", lemma2))
 				{
-					System.out.println("Sentence " + i + ": " + d);
-					moveArguments.put(lemma1, moveArguments.get(lemma1)+1);
+					String pos1 = partsOfSpeech.get(index1-1); //POS of lemma1
+					if (pos1.charAt(0) == 'N') // only considering it if it's a noun
+					{
+						System.out.println("Sentence " + i + ": " + d); //debugging
+						moveArguments.put(lemma1, moveArguments.get(lemma1)+1);
+					}
 				}
 			}
 		}
@@ -300,15 +312,41 @@ public class RulesParser
 			case 1:
 				endIndex = dependency.indexOf(","); //index in dependecy string of the comma immediately following the first index
 				startIndex = dependency.lastIndexOf("-", endIndex) + 1; //index in dependency string of the first digit of of the first index
-				isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
-				return isolatedIndex;
+				try
+				{
+					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
+					return isolatedIndex;
+				}
+				catch (NumberFormatException e)
+				{
+					/*in my experience, coreNLP has a very rare bug where a dependency string will look like:
+					"dependency(word1-index1, word2-index2')" 
+					when this happens, dependency.substring(startIndex, endIndex) will return "index2'" which cannot be parsed by
+					parseInt(). so, we take the substring from startIndex to endIndex-1 to counter that.
+					*/
+					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex-1)); 
+					return isolatedIndex;
+				}
 			case 2: 
 				startIndex = dependency.lastIndexOf("-") + 1; //index in dependency string of the first digit of the second index
 				endIndex = dependency.indexOf(")"); //index in dependency string of the right parenthesis immediately following the second index
-				isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
-				return isolatedIndex;
+				try
+				{
+					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
+					return isolatedIndex;
+				}
+				catch (NumberFormatException e)
+				{
+					/*in my experience, coreNLP has a very rare bug where a dependency string will look like:
+					"dependency(word1-index1, word2-index2')" 
+					when this happens, dependency.substring(startIndex, endIndex) will return "index2'" which cannot be parsed by
+					parseInt(). so, we take the substring from startIndex to endIndex-1 to counter that.
+					*/
+					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex-1)); 
+					return isolatedIndex;
+				}
 			default: //whichIndex can only equal 1 or 2, because a dependency string necessarily only contains 2 words (and therefore 2 indices)
-				return -1;
+				return -1; //error value - index in the sentence can never -1
 		}
 	}
 

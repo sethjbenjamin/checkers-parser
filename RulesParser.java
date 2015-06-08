@@ -22,6 +22,8 @@ public class RulesParser
 	private StanfordCoreNLP pipeline;
 	private Annotation annotation;
 	private List<CoreMap> sentences;
+	private String[][] lemmas; //lemmas[i][j] holds the lemma of the jth word in the ith sentence of the text
+	private String[][] partsOfSpeech; //partsOfSpeech[i][j] holds the POS of the jth word in the ith sentence of the text
 	//WordNet 3.0 implementation using JAWS:
 	private WordNetDatabase wordnet;
 
@@ -46,6 +48,29 @@ public class RulesParser
 			pipeline.annotate(annotation);
 
 			sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
+
+			lemmas = new String[sentences.size()][];
+			partsOfSpeech = new String[sentences.size()][];
+
+			//iterate over all sentences
+			for (int i = 0; i < sentences.size(); i++)
+			{
+				CoreMap sentence = sentences.get(i); //current sentence
+
+				//initizalize lemmas[i] and partsOfSpeech[i] to be String arrays with length = number of tokens in current sentence
+				lemmas[i] = new String[sentence.get(CoreAnnotations.TokensAnnotation.class).size()];
+				partsOfSpeech[i] = new String[sentence.get(CoreAnnotations.TokensAnnotation.class).size()];
+
+				int j = 0;
+				for(CoreMap token: sentence.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
+				{
+					lemmas[i][j] = token.get(CoreAnnotations.LemmaAnnotation.class);
+					partsOfSpeech[i][j] = token.get(CoreAnnotations.PartOfSpeechAnnotation.class);
+					j++;
+				}
+
+
+			}
 		}
 		catch (IOException e)
 		{
@@ -69,57 +94,70 @@ public class RulesParser
 
 	public void parsePieceTypes()
 	{ //TODO make this not void!
+
+		ArrayList<Piece> pieceTypes = new ArrayList<Piece>(1);
+
+		/* The following hashmap associates String keys with Integer arguments. The String keys
+		are every unique lemma of every word in the current ruleset. The Integer value associated with
+		each of these lemmas is the number of times this lemma occurs as a noun argument of the predicate "move"
+		(most often subject, but at times direct object as well).
+		The lemma with the highest frequency as direct object is most likely a type of piece; moreover, it is 
+		most likely the initial type of piece that all pieces start out as in a checkers variant. */
 		HashMap<String,Integer> moveArguments = new HashMap<String,Integer>();
 
+		//iterate over all sentences
 		for (int i = 0; i < sentences.size(); i++)
 		{
-			CoreMap current = sentences.get(i);
-
-			ArrayList<String> lemmas = new ArrayList<String>(1);
-			ArrayList<String> partsOfSpeech = new ArrayList<String>(1);
-			for(CoreMap token: current.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
+			CoreMap sentence = sentences.get(i);
+			
+			for (String lemma: lemmas[i]) //iterate over all the lemmas of the current sentence;
 			{
-				String lemma = token.get(CoreAnnotations.LemmaAnnotation.class);
-				String pos = token.get(CoreAnnotations.PartOfSpeechAnnotation.class);
-				lemmas.add(lemma); //add its lemma to the ArrayList
-				partsOfSpeech.add(pos);
 				if (!moveArguments.containsKey(lemma)) //if the lemma isn't in the hashmap,
-					moveArguments.put(lemma, 0); //add it to the hashmap
+					moveArguments.put(lemma, 0); //add each lemma to the hashmap
 			}
 
-			String[] dependencies = current.get(
+			//dependencies for current sentence as a String[], each entry containing a single dependency String
+			String[] dependencies = sentence.get(
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
+			//iterate over all dependencies for current sentence
 			for (int j = 1; j < dependencies.length; j++)
 			{
-				String d = dependencies[j];
+				String d = dependencies[j]; //current dependency
 				int index1 = isolateIndexFromDependency(d,1);
 				int index2 = isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas.get(index1-1);
-				String lemma2 = lemmas.get(index2-1);
-				//if (isSynonymOf("move", lemma1)) //TODO: force lemma2 to be a noun that is not people!
-				if (isHypernymOf("move", lemma1))
-				{
-					String pos2 = partsOfSpeech.get(index2-1); //POS of lemma2
-					if (pos2.charAt(0) == 'N') //only considering it if it's a noun
+				String lemma1 = lemmas[i][index1-1];
+				String lemma2 = lemmas[i][index2-1];
+				//if (isSynonymOf("move", lemma1))
+				if (isHypernymOf("move", lemma1)) //if the 1st word is a hypernym of the predicate "move", we want to find all of its noun arguments
+				{	//so we inspect lemma2
+					/* we only increment lemma2's value in the hashmap if it's a noun that is not "player" or some synonym: 
+					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay)*/
+					String pos2 = partsOfSpeech[i][index2-1]; //POS of lemma2
+					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0))
 					{
 						System.out.println("Sentence " + i + ": " + d); //debugging
-						moveArguments.put(lemma2, moveArguments.get(lemma2)+1);
+						//System.out.println("Sentence " + i + ": " + sentence); //debugging
+						moveArguments.put(lemma2, moveArguments.get(lemma2)+1); //increment value in hashmap
 					}
 				}
 				//else if (isSynonymOf("move", lemma2))
-				else if (isHypernymOf("move", lemma2))
-				{
-					String pos1 = partsOfSpeech.get(index1-1); //POS of lemma1
-					if (pos1.charAt(0) == 'N') // only considering it if it's a noun
+				else if (isHypernymOf("move", lemma2)) //if the 2nd word is a hypernym of the predicate "move", we want to find all of its noun arguments
+				{	//so we inspect lemma1
+					/* we only increment lemma1's value in the hashmap if it's a noun that is not "player" or some synonym: 
+					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) */
+					String pos1 = partsOfSpeech[i][index1-1]; //POS of lemma1
+					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0)) 
 					{
 						System.out.println("Sentence " + i + ": " + d); //debugging
-						moveArguments.put(lemma1, moveArguments.get(lemma1)+1);
+						//System.out.println("Sentence " + i + ": " + sentence); //debugging
+						moveArguments.put(lemma1, moveArguments.get(lemma1)+1); //increment value in hashmap
 					}
 				}
 			}
 		}
+		/* Now we need to find the lemma with the highest frequency in moveArguments. */
 		int maxValue = -1;
 		String mostFrequentArgument = "";
 		for (Map.Entry<String,Integer> entry: moveArguments.entrySet())
@@ -131,7 +169,9 @@ public class RulesParser
 			}
 		}
 		System.out.println(mostFrequentArgument); //debugging
+		pieceTypes.add(new Piece(mostFrequentArgument));
 
+		
 	}
 
 	public ArrayList<Direction> parseMotion()
@@ -146,11 +186,6 @@ public class RulesParser
 		for (int i = 0; i < sentences.size(); i++)
 		{
 			CoreMap sentence = sentences.get(i); //the current sentence
-
-			//We create an ArrayList of the lemmas of each word in "sentence", stored as Strings.
-			ArrayList<String> lemmas = new ArrayList<String>(1);
-			for(CoreMap token: sentence.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
-				lemmas.add(token.get(CoreAnnotations.LemmaAnnotation.class)); //add its lemma to the ArrayList
 
 			//Now we create an array of the syntactic dependencies of "sentence"
 			//the next line simply initializes "dependeciesString" with a String containing all the dependencies of "sentence"
@@ -170,7 +205,7 @@ public class RulesParser
 					int modifiedIndex = isolateIndexFromDependency(d, 1); //the word is the first word in the dependency substring
 
 					//Now we determine the lemma of the modified word.
-					String modified = lemmas.get(modifiedIndex-1); //-1 because the sentence indices start from 1, not 0
+					String modified = lemmas[i][modifiedIndex-1]; //-1 because the sentence indices start from 1, not 0
 
 					/*Now that we have the modified word's lemma, we determine if it is either:
 					-a hypernym of "move (v)"
@@ -204,12 +239,12 @@ public class RulesParser
 					"move" or "direction."
 					Again, to determine what the modified word is, we have to isolate its index in the sentence as a substring of the 
 					dependency string. */
-					int wordIndex = isolateIndexFromDependency(d,1); //the modified word is the first word in the dependency substring
+					int modifiedIndex = isolateIndexFromDependency(d,1); //the modified word is the first word in the dependency substring
 
 					//Now we determine the lemma of the modified word, and see if "move" is a hypernym of it
-					String lemma = lemmas.get(wordIndex-1); //-1 because the sentence indices start from 1, not 0 
+					String modified = lemmas[i][modifiedIndex-1]; //-1 because the sentence indices start from 1, not 0
 
-					if (isHypernymOf("move", lemma) || isSynonymOf("direction", lemma) || isSynonymOf("move", lemma))
+					if (isHypernymOf("move", modified) || isSynonymOf("direction", modified) || isSynonymOf("move", modified))
 					{
 						/*At this point, we have determined that the phrase we are looking at is a PP of the form "toward/towards [DP]" 
 						modifying some hyponym of "move." Now we have to determine the object of the proposition, and what direction of motion
@@ -337,11 +372,6 @@ public class RulesParser
 				}
 				catch (NumberFormatException e)
 				{
-					/*in my experience, coreNLP has a very rare bug where a dependency string will look like:
-					"dependency(word1-index1, word2-index2')" 
-					when this happens, dependency.substring(startIndex, endIndex) will return "index2'" which cannot be parsed by
-					parseInt(). so, we take the substring from startIndex to endIndex-1 to counter that.
-					*/
 					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex-1)); 
 					return isolatedIndex;
 				}
@@ -477,13 +507,5 @@ public class RulesParser
 		}
 
 	}
-
-	public enum Direction
-	{
-		FORWARD, BACKWARD, LEFT, RIGHT, DIAGONAL
-	}
-
-
-
 	
 }

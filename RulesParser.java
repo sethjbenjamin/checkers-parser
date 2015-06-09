@@ -137,7 +137,7 @@ public class RulesParser
 					String pos2 = partsOfSpeech[i][index2-1]; //POS of lemma2
 					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0))
 					{
-						System.out.println("Sentence " + i + ": " + d); //debugging
+						//System.out.println("Sentence " + i + ": " + d); //debugging
 						//System.out.println("Sentence " + i + ": " + sentence); //debugging
 						moveArguments.put(lemma2, moveArguments.get(lemma2)+1); //increment value in hashmap
 					}
@@ -150,7 +150,7 @@ public class RulesParser
 					String pos1 = partsOfSpeech[i][index1-1]; //POS of lemma1
 					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0)) 
 					{
-						System.out.println("Sentence " + i + ": " + d); //debugging
+						//System.out.println("Sentence " + i + ": " + d); //debugging
 						//System.out.println("Sentence " + i + ": " + sentence); //debugging
 						moveArguments.put(lemma1, moveArguments.get(lemma1)+1); //increment value in hashmap
 					}
@@ -170,6 +170,72 @@ public class RulesParser
 		}
 		System.out.println(mostFrequentArgument); //debugging
 		pieceTypes.add(new Piece(mostFrequentArgument));
+
+		
+		boolean allTransitionsChecked = false;
+
+		//TODO: set up a while loop to check for transition things (where each piece has some boolean property like isTransitionChecked)
+		while (!allTransitionsChecked)
+		{
+			for (Piece p: pieceTypes)
+			{
+				if (!p.isTransitionChecked)
+				{
+					String name = p.getName();
+
+					//iterate over all sentences again
+					for (int i = 0; i < sentences.size(); i++)
+					{
+						CoreMap sentence = sentences.get(i);
+						//dependencies for current sentence as a String[], each entry containing a single dependency String
+						String[] dependencies = sentence.get(
+							SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+							SemanticGraph.OutputFormat.LIST).split("\n");
+
+						boolean isNameSubject = false;
+						int j = 1;
+						while (!isNameSubject && j < dependencies.length)
+						{
+							String d = dependencies[j];
+							if (d.contains("nsubj") && d.contains(name))
+								isNameSubject = true;
+
+							j++;
+						}
+
+						if (isNameSubject)
+						{
+							for (int k = 1; k < dependencies.length; k++)
+							{
+								String d = dependencies[k];
+								int index1 = isolateIndexFromDependency(d,1);
+								int index2 = isolateIndexFromDependency(d,2);
+								String lemma1 = lemmas[i][index1-1];
+								String pos2 = partsOfSpeech[i][index2-1];
+								if (lemma1.equals("become") && pos2.charAt(0) == 'N') //TODO: this has NO subject check! necessary.
+								{
+									String lemma2 = lemmas[i][index2-1];
+									System.out.println("transition: " + lemma2); //debugging
+
+								}
+							}
+						}
+
+					}
+
+				}
+
+				p.isTransitionChecked = true;
+			}
+
+			allTransitionsChecked = true;
+			for (Piece p: pieceTypes)
+			{
+				allTransitionsChecked = allTransitionsChecked && p.isTransitionChecked;
+			}
+
+		}
+
 
 		
 	}

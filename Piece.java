@@ -4,12 +4,10 @@ public class Piece
 {
 	private String name;
 	private ArrayList<Direction> motionTypes;
-	public boolean isTransitionChecked;
 
 	public Piece(String name)
 	{
 		this.name = name;
-		this.isTransitionChecked = false;
 	}
 
 	public String getName()
@@ -26,5 +24,14 @@ public class Piece
 	{
 		motionTypes = newMotionTypes;
 	}
+
+	/**
+	Checks if two piece types have the same name.
+	*/
+	public boolean equals(Piece other)
+	{
+		return this.name == other.name;
+	}
+
 
 }

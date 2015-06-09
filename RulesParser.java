@@ -89,11 +89,12 @@ public class RulesParser
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
 		//ArrayList<Direction> motionTypes = parseMotion();
-		parsePieceTypes();
+		ArrayList<Piece> pieceTypes = parsePieceTypes();
+		System.out.println(pieceTypes.size());
 	}
 
-	public void parsePieceTypes()
-	{ //TODO make this not void!
+	public ArrayList<Piece> parsePieceTypes()
+	{
 
 		ArrayList<Piece> pieceTypes = new ArrayList<Piece>(1);
 
@@ -171,72 +172,43 @@ public class RulesParser
 		System.out.println(mostFrequentArgument); //debugging
 		pieceTypes.add(new Piece(mostFrequentArgument));
 
-		
-		boolean allTransitionsChecked = false;
-
-		//TODO: set up a while loop to check for transition things (where each piece has some boolean property like isTransitionChecked)
-		while (!allTransitionsChecked)
+		//This currently doesn't implement a subject check on "become" - maybe one would be a good idea to prevent false positives.
+		for (int i = 0; i < sentences.size(); i++)
 		{
-			for (Piece p: pieceTypes)
+			CoreMap sentence = sentences.get(i);
+			//dependencies for current sentence as a String[], each entry containing a single dependency String
+			String[] dependencies = sentence.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+				SemanticGraph.OutputFormat.LIST).split("\n");
+
+			for (int j = 1; j < dependencies.length; j++)
 			{
-				if (!p.isTransitionChecked)
+				String d = dependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas[i][index1-1];
+				String lemma2 = lemmas[i][index2-1];
+				String pos2 = partsOfSpeech[i][index2-1];
+
+				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 				{
-					String name = p.getName();
-
-					//iterate over all sentences again
-					for (int i = 0; i < sentences.size(); i++)
+					System.out.println("transition: " + lemma2 + " in sentence " + i); //debugging
+					Piece newPiece = new Piece(lemma2); //we add the new type of piece to pieceTypes, but only if it hasn't already been added
+					boolean isAlreadyAdded = false;
+					for (Piece p: pieceTypes) //check all pieceTypes to see if any are the same as newPiece
 					{
-						CoreMap sentence = sentences.get(i);
-						//dependencies for current sentence as a String[], each entry containing a single dependency String
-						String[] dependencies = sentence.get(
-							SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
-							SemanticGraph.OutputFormat.LIST).split("\n");
-
-						boolean isNameSubject = false;
-						int j = 1;
-						while (!isNameSubject && j < dependencies.length)
-						{
-							String d = dependencies[j];
-							if (d.contains("nsubj") && d.contains(name))
-								isNameSubject = true;
-
-							j++;
-						}
-
-						if (isNameSubject)
-						{
-							for (int k = 1; k < dependencies.length; k++)
-							{
-								String d = dependencies[k];
-								int index1 = isolateIndexFromDependency(d,1);
-								int index2 = isolateIndexFromDependency(d,2);
-								String lemma1 = lemmas[i][index1-1];
-								String pos2 = partsOfSpeech[i][index2-1];
-								if (lemma1.equals("become") && pos2.charAt(0) == 'N') //TODO: this has NO subject check! necessary.
-								{
-									String lemma2 = lemmas[i][index2-1];
-									System.out.println("transition: " + lemma2); //debugging
-
-								}
-							}
-						}
-
+						if (p.equals(newPiece))
+							isAlreadyAdded = true;
 					}
-
+					if (!isAlreadyAdded) // if the piece hasn't already been added,
+					{
+						pieceTypes.add(newPiece); //add it
+					}
 				}
-
-				p.isTransitionChecked = true;
-			}
-
-			allTransitionsChecked = true;
-			for (Piece p: pieceTypes)
-			{
-				allTransitionsChecked = allTransitionsChecked && p.isTransitionChecked;
 			}
 
 		}
-
-
+		return pieceTypes;
 		
 	}
 

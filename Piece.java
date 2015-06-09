@@ -4,17 +4,12 @@ public class Piece
 {
 	private String name;
 	private ArrayList<Direction> motionTypes;
-	//public boolean isTransitionChecked;
-
-	/*public Piece(String name, boolean isTransitionChecked)
-	{
-		this.name = name;
-		this.isTransitionChecked = isTransitionChecked;
-	}*/
+	public boolean isTransitionChecked;
 
 	public Piece(String name)
 	{
 		this.name = name;
+		this.isTransitionChecked = false;
 	}
 
 	public String getName()

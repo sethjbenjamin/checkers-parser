@@ -183,7 +183,8 @@ public class RulesParser
 				Piece currentPiece = pieceTypes.get(j);
 				String name = currentPiece.getName();
 				boolean isNameSubject = false;
-				boolean isObjectOfBecome = false;
+				boolean isPassiveTransition = false; //used for a construction like "a checker is made a king"
+				boolean isTransitionStatement = false;
 
 				String newPieceName = null; 
 
@@ -198,14 +199,25 @@ public class RulesParser
 
 					if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
 						isNameSubject = true;
-					if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
+					if ((lemma1.equals("become")) && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 					{
-						isObjectOfBecome = true;
+						isTransitionStatement = true;
+						newPieceName = lemma2;
+					}
+					if (d.contains("nsubjpass") && lemma1.equals("make")) //checks if the sentence is in the passive voice and has "make" as its predicate
+						isPassiveTransition = true; 
+					if ((lemma1.equals("make")) && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
+					{
+						/* Setting isTransition equal to isPassiveTransition ensures that isTransitionStatement is only set true
+						when the sentence that is potentially a transition statement is in the passive voice. This enures that sentences like
+						"the checker is made a king" are parsed as transition statements, but sentences like "the checker makes a jump"
+						are not. */
+						isTransitionStatement = isPassiveTransition;
 						newPieceName = lemma2;
 					}
 				}
 
-				if (isNameSubject && isObjectOfBecome)
+				if (isNameSubject && isTransitionStatement)
 				{
 					System.out.println("New piece found through transition: " + newPieceName + " in sentence " + i); //debugging
 					Piece newPiece = new Piece(newPieceName, currentPiece); //we add the new type of piece to pieceTypes, but only if it hasn't already been added

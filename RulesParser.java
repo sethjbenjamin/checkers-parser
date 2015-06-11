@@ -83,14 +83,13 @@ public class RulesParser
 	{
 		readFile();
 
-		for (int i = 0; i < sentences.size(); i++) //debugging
+		for (int i = 0; i < sentences.size(); i++) //debugging - prints all sentences w/ numbers
 		{
 			CoreMap current = sentences.get(i);
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
 		//ArrayList<Direction> motionTypes = parseMotion();
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
-		System.out.println(pieceTypes.size());
 	}
 
 	public ArrayList<Piece> parsePieceTypes()
@@ -130,31 +129,22 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d,2);
 				String lemma1 = lemmas[i][index1-1];
 				String lemma2 = lemmas[i][index2-1];
-				//if (isSynonymOf("move", lemma1))
-				if (isHypernymOf("move", lemma1)) //if the 1st word is a hypernym of the predicate "move", we want to find all of its noun arguments
+				
+				if (isHypernymOf("move", lemma1)) //if the 1st word is a hyponym of the predicate "move", we want to find all of its noun arguments
 				{	//so we inspect lemma2
 					/* we only increment lemma2's value in the hashmap if it's a noun that is not "player" or some synonym: 
 					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay)*/
 					String pos2 = partsOfSpeech[i][index2-1]; //POS of lemma2
 					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0))
-					{
-						//System.out.println("Sentence " + i + ": " + d); //debugging
-						//System.out.println("Sentence " + i + ": " + sentence); //debugging
 						moveArguments.put(lemma2, moveArguments.get(lemma2)+1); //increment value in hashmap
-					}
 				}
-				//else if (isSynonymOf("move", lemma2))
-				else if (isHypernymOf("move", lemma2)) //if the 2nd word is a hypernym of the predicate "move", we want to find all of its noun arguments
+				else if (isHypernymOf("move", lemma2)) //if the 2nd word is a hyponym of the predicate "move", we want to find all of its noun arguments
 				{	//so we inspect lemma1
 					/* we only increment lemma1's value in the hashmap if it's a noun that is not "player" or some synonym: 
 					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) */
 					String pos1 = partsOfSpeech[i][index1-1]; //POS of lemma1
 					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0)) 
-					{
-						//System.out.println("Sentence " + i + ": " + d); //debugging
-						//System.out.println("Sentence " + i + ": " + sentence); //debugging
 						moveArguments.put(lemma1, moveArguments.get(lemma1)+1); //increment value in hashmap
-					}
 				}
 			}
 		}
@@ -169,10 +159,10 @@ public class RulesParser
 				mostFrequentArgument = entry.getKey();
 			}
 		}
-		System.out.println(mostFrequentArgument); //debugging
+		System.out.println("Default piece type parsed: " + mostFrequentArgument + " (most frequent argument of \"move\")"); //debugging
 		pieceTypes.add(new Piece(mostFrequentArgument));
 
-		//This currently doesn't implement a subject check on "become" - maybe one would be a good idea to prevent false positives.
+		//TODO: This currently doesn't implement a subject check on "become" - maybe (?) one would be a good idea to prevent false positives.
 		for (int i = 0; i < sentences.size(); i++)
 		{
 			CoreMap sentence = sentences.get(i);
@@ -192,18 +182,19 @@ public class RulesParser
 
 				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 				{
-					System.out.println("transition: " + lemma2 + " in sentence " + i); //debugging
+					System.out.println("New piece found through transition: " + lemma2 + " in sentence " + i); //debugging
 					Piece newPiece = new Piece(lemma2); //we add the new type of piece to pieceTypes, but only if it hasn't already been added
 					boolean isAlreadyAdded = false;
-					for (Piece p: pieceTypes) //check all pieceTypes to see if any are the same as newPiece
+					for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
 					{
 						if (p.equals(newPiece))
+						{
 							isAlreadyAdded = true;
+							break; //don't need to check the rest
+						}
 					}
 					if (!isAlreadyAdded) // if the piece hasn't already been added,
-					{
 						pieceTypes.add(newPiece); //add it
-					}
 				}
 			}
 

@@ -136,7 +136,11 @@ public class RulesParser
 					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay)*/
 					String pos2 = partsOfSpeech[i][index2-1]; //POS of lemma2
 					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0))
+					{
 						moveArguments.put(lemma2, moveArguments.get(lemma2)+1); //increment value in hashmap
+						/*if (lemma2.equals("piece") || lemma2.equals("checker"))
+							System.out.println("sentence " + i + ": " + d); //debugging*/
+					}
 				}
 				else if (isHypernymOf("move", lemma2)) //if the 2nd word is a hyponym of the predicate "move", we want to find all of its noun arguments
 				{	//so we inspect lemma1
@@ -144,7 +148,11 @@ public class RulesParser
 					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) */
 					String pos1 = partsOfSpeech[i][index1-1]; //POS of lemma1
 					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0)) 
+					{
 						moveArguments.put(lemma1, moveArguments.get(lemma1)+1); //increment value in hashmap
+						/*if (lemma1.equals("piece") || lemma1.equals("checker"))
+							System.out.println("sentence " + i + ": " + d); //debugging*/
+					}
 				}
 			}
 		}
@@ -162,7 +170,6 @@ public class RulesParser
 		System.out.println("Default piece type parsed: " + mostFrequentArgument + " (most frequent argument of \"move\")"); //debugging
 		pieceTypes.add(new Piece(mostFrequentArgument));
 
-		//TODO: This currently doesn't implement a subject check on "become" - maybe (?) one would be a good idea to prevent false positives.
 		for (int i = 0; i < sentences.size(); i++)
 		{
 			CoreMap sentence = sentences.get(i);
@@ -171,19 +178,37 @@ public class RulesParser
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
-			for (int j = 1; j < dependencies.length; j++)
+			for (int j = 0; j < pieceTypes.size(); j++)
 			{
-				String d = dependencies[j];
-				int index1 = isolateIndexFromDependency(d,1);
-				int index2 = isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1-1];
-				String lemma2 = lemmas[i][index2-1];
-				String pos2 = partsOfSpeech[i][index2-1];
+				Piece currentPiece = pieceTypes.get(j);
+				String name = currentPiece.getName();
+				boolean isNameSubject = false;
+				boolean isObjectOfBecome = false;
 
-				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
+				String newPieceName = null; 
+
+				for (int k = 1; k < dependencies.length; k++)
 				{
-					System.out.println("New piece found through transition: " + lemma2 + " in sentence " + i); //debugging
-					Piece newPiece = new Piece(lemma2); //we add the new type of piece to pieceTypes, but only if it hasn't already been added
+					String d = dependencies[k];
+					int index1 = isolateIndexFromDependency(d,1);
+					int index2 = isolateIndexFromDependency(d,2);
+					String lemma1 = lemmas[i][index1-1];
+					String lemma2 = lemmas[i][index2-1];
+					String pos2 = partsOfSpeech[i][index2-1];
+
+					if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
+						isNameSubject = true;
+					if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
+					{
+						isObjectOfBecome = true;
+						newPieceName = lemma2;
+					}
+				}
+
+				if (isNameSubject && isObjectOfBecome)
+				{
+					System.out.println("New piece found through transition: " + newPieceName + " in sentence " + i); //debugging
+					Piece newPiece = new Piece(newPieceName, currentPiece); //we add the new type of piece to pieceTypes, but only if it hasn't already been added
 					boolean isAlreadyAdded = false;
 					for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
 					{

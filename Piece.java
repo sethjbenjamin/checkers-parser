@@ -4,10 +4,20 @@ public class Piece
 {
 	private String name;
 	private ArrayList<Direction> motionTypes;
+	private Piece previousType; 
+	/*in the case that one type of piece becomes another type of piece after something happens, 
+	this field stores a reference to the first type of piece. */
 
 	public Piece(String name)
 	{
 		this.name = name;
+		this.previousType = null;
+	}
+
+	public Piece(String name, Piece previousType)
+	{
+		this.name = name;
+		this.previousType = previousType;
 	}
 
 	public String getName()
@@ -33,5 +43,9 @@ public class Piece
 		return this.name == other.name;
 	}
 
+	public Piece getPreviousType()
+	{
+		return previousType;
+	}
 
 }

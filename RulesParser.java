@@ -90,6 +90,11 @@ public class RulesParser
 		}
 		//ArrayList<Direction> motionTypes = parseMotion();
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
+		for (Piece p: pieceTypes)
+		{
+			ArrayList<Integer> indices = determineMotionSentences(p);
+			ArrayList<Direction> motionTypes = parseMotion(indices);
+		}
 	}
 
 	public ArrayList<Piece> parsePieceTypes()
@@ -207,10 +212,10 @@ public class RulesParser
 					isPassiveTransition = true; 
 				if ((lemma1.equals("make")) && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 				{
-					/* Setting isTransition equal to isPassiveTransition ensures that isTransitionStatement is only set true
-					when the sentence that is potentially a transition statement is in the passive voice. This ensures that sentences like
-					"the checker is made a king" are parsed as transition statements, but sentences like "the checker makes a jump"
-					are not. */
+					/* Setting isTransitionStatement equal to isPassiveTransition (as opposed to simply setting it to true) ensures that 
+					isTransitionStatement is only set true when the sentence that is potentially a transition statement is in the passive voice. 
+					This ensures that sentences like "the checker is made a king" are parsed as transition statements, 
+					but sentences like "the checker makes a jump" are not. */
 					isTransitionStatement = isPassiveTransition;
 					newPieceName = lemma2;
 				}
@@ -236,10 +241,76 @@ public class RulesParser
 				}
 			}
 		}
+	}
+
+	public ArrayList<Integer> determineMotionSentences(Piece p)
+	{
+		String name = p.getName();
+
+		ArrayList<Integer> indices = new ArrayList<Integer>(1);
+
+		for (int i = 0; i < sentences.size() - 1; i++)
+		{
+			CoreMap currentSentence = sentences.get(i);
+			CoreMap nextSentence = sentences.get(i+1);
+
+			String[] currentDependencies = currentSentence.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+				SemanticGraph.OutputFormat.LIST).split("\n");
+			String[] nextDependencies = nextSentence.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+				SemanticGraph.OutputFormat.LIST).split("\n");
+
+			boolean isNameArgument = false;
+			boolean isMovePredicate = false;
+			int index = -1;
+
+			for (int j = 1; j < currentDependencies.length; j++)
+			{
+				String d = currentDependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas[i][index1-1];
+				String lemma2 = lemmas[i][index2-1];
+				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")) && lemma2.equals(name))
+					isNameArgument = true;	
+				if (isHypernymOf("move", lemma1) && (lemma2.equalsIgnoreCase("it") || lemma2.equals(name)))
+				{
+					isMovePredicate = true;
+					index = i;
+				}
+				/*
+				TODO:
+				-make this check for more than just nsubj(move,name)
+				-implement a check for previous sentence and it
+				-test it on errythang
+				*/
+			}
+			for (int j = 1; j < nextDependencies.length; j++)
+			{
+				String d = nextDependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas[i+1][index1-1];
+				String lemma2 = lemmas[i+1][index2-1];	
+				if (d.contains("nsubj") && isHypernymOf("move", lemma1) && lemma2.equalsIgnoreCase("it"))
+				{
+					isMovePredicate = true;
+					if (index == -1)
+						index = i+1;
+				}
+			}
+			if (isNameArgument && isMovePredicate)
+			{
+				indices.add(index);
+				System.out.println("Motion sentence index for " + name + ": " + index);
+			}
+		}
+		return indices;
 
 	}
 
-	public ArrayList<Direction> parseMotion()
+	public ArrayList<Direction> parseMotion(ArrayList<Integer> indices)
 	{
 		ArrayList<Direction> motionTypes = new ArrayList<Direction>(1); 
 		//ultimately, this ArrayList will hold all of the allowed types of motion explicitly described in the ruleset
@@ -248,15 +319,14 @@ public class RulesParser
 		negation word; the internal logic of parseMotion() does not distinguish between negated clauses and regular ones, so they must be 
 		interpreted separately and then removed from motionTypes. */
 
-		for (int i = 0; i < sentences.size(); i++)
+		for (int i: indices)
 		{
 			CoreMap sentence = sentences.get(i); //the current sentence
 
-			//Now we create an array of the syntactic dependencies of "sentence"
-			//the next line simply initializes "dependeciesString" with a String containing all the dependencies of "sentence"
-			String dependenciesString = sentence.get(
-				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(SemanticGraph.OutputFormat.LIST);
-			String[] dependencies = dependenciesString.split("\n"); //split the String into an array, one dependency per index in the array
+			//dependencies for current sentence as a String[], each entry containing a single dependency String
+			String[] dependencies = sentence.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+				SemanticGraph.OutputFormat.LIST).split("\n");
 
 			//iterate over all dependencies, searching for certain types
 			for (String d: dependencies)

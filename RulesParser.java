@@ -94,6 +94,12 @@ public class RulesParser
 		{
 			ArrayList<Integer> indices = determineMotionSentences(p);
 			ArrayList<Direction> motionTypes = parseMotion(indices);
+			p.addMotionTypes(motionTypes);
+			if (p.getPreviousType() != null)
+			{
+				Piece previous = p.getPreviousType();
+				p.addMotionTypes(previous.getMotionTypes());
+			}
 		}
 	}
 
@@ -272,9 +278,13 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d,2);
 				String lemma1 = lemmas[i][index1-1];
 				String lemma2 = lemmas[i][index2-1];
-				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")) && lemma2.equals(name))
+				String pos1 = partsOfSpeech[i][index1-1];
+				String pos2 = partsOfSpeech[i][index2-1];
+
+				// the toLowerCase mess is in place of equals() because coreNLP can't figure out that the lemma for "Pieces" is not "Pieces"
+				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")) && lemma2.toLowerCase().contains(name))
 					isNameArgument = true;	
-				if (isHypernymOf("move", lemma1) && (lemma2.equalsIgnoreCase("it") || lemma2.equals(name)))
+				if (isHypernymOf("move", lemma1) && (lemma2.equalsIgnoreCase("it") || lemma2.toLowerCase().contains(name)))
 				{
 					isMovePredicate = true;
 					index = i;
@@ -282,9 +292,17 @@ public class RulesParser
 				/*
 				TODO:
 				-make this check for more than just nsubj(move,name)
-				-implement a check for previous sentence and it
+				-implement a check for the very last sentence
 				-test it on errythang
 				*/
+				if ((lemma1.equals("move") && pos1.charAt(0) == 'N') || (lemma2.equals("move") && pos2.charAt(0) == 'N'))
+				{
+					if (!indices.contains(i))
+					{
+						indices.add(i);
+						System.out.println("Motion sentence index for " + name + ": " + i + " (found from move (n))");
+					}
+				}
 			}
 			for (int j = 1; j < nextDependencies.length; j++)
 			{
@@ -293,7 +311,7 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d,2);
 				String lemma1 = lemmas[i+1][index1-1];
 				String lemma2 = lemmas[i+1][index2-1];	
-				if (d.contains("nsubj") && isHypernymOf("move", lemma1) && lemma2.equalsIgnoreCase("it"))
+				if (isHypernymOf("move", lemma1) && lemma2.equalsIgnoreCase("it"))
 				{
 					isMovePredicate = true;
 					if (index == -1)
@@ -302,8 +320,11 @@ public class RulesParser
 			}
 			if (isNameArgument && isMovePredicate)
 			{
-				indices.add(index);
-				System.out.println("Motion sentence index for " + name + ": " + index);
+				if (!indices.contains(index))
+					{
+						indices.add(index);
+						System.out.println("Motion sentence index for " + name + ": " + index);
+					}
 			}
 		}
 		return indices;

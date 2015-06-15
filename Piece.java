@@ -12,12 +12,14 @@ public class Piece
 	{
 		this.name = name;
 		this.previousType = null;
+		motionTypes = new ArrayList<Direction>(1);
 	}
 
 	public Piece(String name, Piece previousType)
 	{
 		this.name = name;
 		this.previousType = previousType;
+		motionTypes = new ArrayList<Direction>(1);
 	}
 
 	public String getName()
@@ -30,9 +32,12 @@ public class Piece
 		return motionTypes;
 	}
 
-	public void setMotionTypes(ArrayList<Direction> newMotionTypes)
+	public void addMotionTypes(ArrayList<Direction> newMotionTypes)
 	{
-		motionTypes = newMotionTypes;
+		for (Direction d: newMotionTypes)
+		{
+			motionTypes.add(d);
+		}
 	}
 
 	/**

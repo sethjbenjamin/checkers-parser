@@ -88,7 +88,9 @@ public class RulesParser
 			CoreMap current = sentences.get(i);
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
-		//ArrayList<Direction> motionTypes = parseMotion();
+		
+		ArrayList<String> moveTypes = parseMoveTypes();
+
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
 		for (Piece p: pieceTypes)
 		{
@@ -101,6 +103,55 @@ public class RulesParser
 				p.addMotionTypes(previous.getMotionTypes());
 			}
 		}
+	}
+
+	public ArrayList<String> parseMoveTypes()
+	{
+		/*
+		This method works by iterating over all lemmas in a ruleset, counting the number of times any hyponym of 
+		"move" appears in the ruleset, and choosing the n most frequent hyponyms to be the move types of the game.
+		The following constant, NUM_MOVETYPES, specifies the value of n. There are two types of moves in checkers - 
+		"moving" vs "jumping" - so this constant is set to 2.
+		*/
+		final int NUM_MOVETYPES = 2;
+
+		ArrayList<String> moveTypes = new ArrayList<String>(NUM_MOVETYPES);
+
+		HashMap<String,Integer> moveHyponyms = new HashMap<String,Integer>();
+		for (int i = 0; i < sentences.size(); i++)
+		{
+			for (String lemma: lemmas[i])
+			{
+				if (isHypernymOf("move", lemma)) // only considering hyponyms of "move"
+				{
+					if (!moveHyponyms.containsKey(lemma)) // if the hyponym isn't in the hashmap,
+						moveHyponyms.put(lemma, 0); // add it to the hashmap
+					else // if the hyponym already is in the hashmap,
+						moveHyponyms.put(lemma, moveHyponyms.get(lemma)+1); // increment its value in the hashmap
+				}
+
+			}
+		}
+
+		for (int i = NUM_MOVETYPES; i > 0; i--)
+		{
+			String mostFrequentHyponym = "";
+			int maxValue = -1;
+			for (Map.Entry<String,Integer> entry: moveHyponyms.entrySet())
+			{
+				String currentKey = entry.getKey();
+				int currentValue = entry.getValue();
+				if (maxValue < currentValue && !moveTypes.contains(currentKey))
+				{
+					maxValue = currentValue;
+					mostFrequentHyponym = currentKey;
+				}
+			}
+			moveTypes.add(mostFrequentHyponym);
+			System.out.println("Move type parsed: " + mostFrequentHyponym);
+		}
+		return moveTypes;
+
 	}
 
 	public ArrayList<Piece> parsePieceTypes()

@@ -510,12 +510,15 @@ public class RulesParser
 				}
 				catch (NumberFormatException e)
 				{
-					/*in my experience, coreNLP has a very rare bug where a dependency string will look like:
-					"dependency(word1-index1, word2-index2')" 
-					when this happens, dependency.substring(startIndex, endIndex) will return "index2'" which cannot be parsed by
-					parseInt(). so, we take the substring from startIndex to endIndex-1 to counter that.
+					/*in my experience, coreNLP has a very rare bug where a dependency string will append an unpredictable
+					number of apostrophes to the end of an index, producing a dependency substring that looks like, for example:
+					dependency(word1-index1, word2-index2'')
+					when this happens, dependency.substring(startIndex, endIndex) will return "index2''" which cannot be parsed by
+					parseInt(). so, we decrement endIndex until dependency.charAt(endIndex-1) is not an apostrophe.
 					*/
-					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex-1)); 
+					while (dependency.charAt(endIndex-1) == '\'')
+						endIndex--;
+					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex)); 
 					return isolatedIndex;
 				}
 			case 2: 
@@ -528,7 +531,9 @@ public class RulesParser
 				}
 				catch (NumberFormatException e)
 				{
-					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex-1)); 
+					while (dependency.charAt(endIndex-1) == '\'')
+						endIndex--;
+					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex)); 
 					return isolatedIndex;
 				}
 			default: //whichIndex can only equal 1 or 2, because a dependency string necessarily only contains 2 words (and therefore 2 indices)

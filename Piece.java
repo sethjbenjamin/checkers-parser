@@ -45,7 +45,7 @@ public class Piece
 	*/
 	public boolean equals(Piece other)
 	{
-		return this.name == other.name;
+		return this.name.equals(other.name);
 	}
 
 	public Piece getPreviousType()

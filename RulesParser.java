@@ -27,6 +27,8 @@ public class RulesParser
 	//WordNet 3.0 implementation using JAWS:
 	private WordNetDatabase wordnet;
 
+	private ArrayList<String> moveTypes;
+
 
 	public RulesParser(String fileName)
 	{
@@ -89,7 +91,7 @@ public class RulesParser
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
 		
-		ArrayList<String> moveTypes = parseMoveTypes();
+		moveTypes = parseMoveTypes();
 
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
 		for (Piece p: pieceTypes)
@@ -115,7 +117,7 @@ public class RulesParser
 		*/
 		final int NUM_MOVETYPES = 2;
 
-		ArrayList<String> moveTypes = new ArrayList<String>(NUM_MOVETYPES);
+		ArrayList<String> parsedMoveTypes = new ArrayList<String>(NUM_MOVETYPES);
 
 		HashMap<String,Integer> moveHyponyms = new HashMap<String,Integer>();
 		for (int i = 0; i < sentences.size(); i++)
@@ -141,16 +143,16 @@ public class RulesParser
 			{
 				String currentKey = entry.getKey();
 				int currentValue = entry.getValue();
-				if (maxValue < currentValue && !moveTypes.contains(currentKey))
+				if (maxValue < currentValue && !parsedMoveTypes.contains(currentKey))
 				{
 					maxValue = currentValue;
 					mostFrequentHyponym = currentKey;
 				}
 			}
-			moveTypes.add(mostFrequentHyponym);
+			parsedMoveTypes.add(mostFrequentHyponym);
 			System.out.println("Move type parsed: " + mostFrequentHyponym);
 		}
-		return moveTypes;
+		return parsedMoveTypes;
 
 	}
 
@@ -161,10 +163,12 @@ public class RulesParser
 
 		/* The following hashmap associates String keys with Integer arguments. The String keys
 		are every unique lemma of every word in the current ruleset. The Integer value associated with
-		each of these lemmas is the number of times this lemma occurs as a noun argument of the predicate "move"
-		(most often subject, but at times direct object as well).
-		The lemma with the highest frequency as direct object is most likely a type of piece; moreover, it is 
-		most likely the initial type of piece that all pieces start out as in a checkers variant. */
+		each of these lemmas is the number of times this lemma occurs as a noun argument of:
+		- any of the move types in moveTypes
+		- any synonym of the verb "reach"
+		- any synonym of the verb "become"
+		The lemma with the highest frequency as argument of any of these predicates is most likely a type of piece; 
+		moreover, it is most likely the initial type of piece that all pieces start out as in a checkers variant. */
 		HashMap<String,Integer> moveArguments = new HashMap<String,Integer>();
 
 		//iterate over all sentences
@@ -191,21 +195,37 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d,2);
 				String lemma1 = lemmas[i][index1-1];
 				String lemma2 = lemmas[i][index2-1];
-				
-				if (isHypernymOf("move", lemma1)) //if the 1st word is a hyponym of the predicate "move", we want to find all of its noun arguments
-				{	//so we inspect lemma2
-					/* we only increment lemma2's value in the hashmap if it's a noun that is not "player" or some synonym: 
-					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay)*/
-					String pos2 = partsOfSpeech[i][index2-1]; //POS of lemma2
-					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0))
+				String pos1 = partsOfSpeech[i][index1-1]; //POS of lemma1
+				String pos2 = partsOfSpeech[i][index2-1]; //POS of lemma2
+
+				/* The following if statement checks if lemma1 is:
+				- any of the move types in moveTypes
+				- any synonym of the verb "reach"
+				- any synonym of the verb "become"
+				 */
+				if (moveTypes.contains(lemma1) || isSynonymOf("reach", lemma1) || isSynonymOf("become", lemma1))
+				{	//if so, we inspect lemma2
+					/* we only increment lemma2's value in the hashmap if:
+					-it's a noun
+					-it is not "player" or some synonym (0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) 
+					-it's not one of the moveTypes (phrases like "make a jump" are common enough that they usually get counted instead of
+					piece types if this isn't checked) */
+					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0) && !moveTypes.contains(lemma2))
 						moveArguments.put(lemma2, moveArguments.get(lemma2)+1); //increment value in hashmap
 				}
-				else if (isHypernymOf("move", lemma2)) //if the 2nd word is a hyponym of the predicate "move", we want to find all of its noun arguments
-				{	//so we inspect lemma1
-					/* we only increment lemma1's value in the hashmap if it's a noun that is not "player" or some synonym: 
-					(0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) */
-					String pos1 = partsOfSpeech[i][index1-1]; //POS of lemma1
-					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0)) 
+				/* if the previous if statement was false, the following if statement checks if lemma2 is:
+				- any of the move types in moveTypes
+				- any synonym of the verb "reach"
+				- any synonym of the verb "become"
+				 */
+				else if (moveTypes.contains(lemma2) || isSynonymOf("reach", lemma2) || isSynonymOf("become", lemma2))
+				{	//if so, we inspect lemma1
+					/* we only increment lemma1's value in the hashmap if:
+					-it's a noun
+					-it is not "player" or some synonym (0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) 
+					-it's not one of the moveTypes (phrases like "make a jump" are common enough that they usually get counted instead of
+					piece types if this isn't checked) */
+					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0) && !moveTypes.contains(lemma1)) 
 						moveArguments.put(lemma1, moveArguments.get(lemma1)+1); //increment value in hashmap
 				}
 			}
@@ -222,7 +242,7 @@ public class RulesParser
 			}
 		}
 
-		System.out.println("Default piece type parsed: " + mostFrequentArgument + " (most frequent argument of \"move\")"); //debugging
+		System.out.println("Default piece type parsed: " + mostFrequentArgument); //debugging
 		Piece defaultPiece = new Piece(mostFrequentArgument);
 		pieceTypes.add(defaultPiece);
 		parseTransitionStatements(defaultPiece, pieceTypes);
@@ -335,7 +355,8 @@ public class RulesParser
 				// the toLowerCase mess is in place of equals() because coreNLP can't figure out that the lemma for "Pieces" is not "Pieces"
 				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")) && lemma2.toLowerCase().contains(name))
 					isNameArgument = true;	
-				if (isHypernymOf("move", lemma1) && (lemma2.equalsIgnoreCase("it") || lemma2.toLowerCase().contains(name)))
+				
+				if (moveTypes.contains(lemma1) && (lemma2.equalsIgnoreCase("it") || lemma2.toLowerCase().contains(name)))
 				{
 					isMovePredicate = true;
 					index = i;
@@ -362,7 +383,8 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d,2);
 				String lemma1 = lemmas[i+1][index1-1];
 				String lemma2 = lemmas[i+1][index2-1];	
-				if (isHypernymOf("move", lemma1) && lemma2.equalsIgnoreCase("it"))
+				
+				if (moveTypes.contains(lemma1) && lemma2.equalsIgnoreCase("it"))
 				{
 					isMovePredicate = true;
 					if (index == -1)

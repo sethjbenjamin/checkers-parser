@@ -109,14 +109,18 @@ public class RulesParser
 
 	public ArrayList<String> parseMoveTypes()
 	{
-		/*
-		This method works by iterating over all lemmas in a ruleset, counting the number of times any hyponym of 
+		/* This method works by iterating over all lemmas in a ruleset, counting the number of times any hyponym of 
 		"move" appears in the ruleset, and choosing the n most frequent hyponyms to be the move types of the game.
 		The following constant, NUM_MOVETYPES, specifies the value of n. There are two types of moves in checkers - 
 		"moving" vs "jumping" - so this constant is set to 2.
 		*/
 		final int NUM_MOVETYPES = 2;
 
+		/* The following hashmap associates String keys with Integer values. The String keys
+		are every unique lemma of every hyponym of the verb "move" in the current ruleset. The Integer value associated with
+		each of these lemmas is the number of times this lemma occurs in the ruleset.
+		The n lemmas with highest Integer values are the n most frequent hyponyms of "move", and are therefore
+		interpreted to be the n types of moves (where n = NUM_MOVETYPES.) */
 		ArrayList<String> parsedMoveTypes = new ArrayList<String>(NUM_MOVETYPES);
 
 		HashMap<String,Integer> moveHyponyms = new HashMap<String,Integer>();
@@ -161,7 +165,7 @@ public class RulesParser
 
 		ArrayList<Piece> pieceTypes = new ArrayList<Piece>(1);
 
-		/* The following hashmap associates String keys with Integer arguments. The String keys
+		/* The following hashmap associates String keys with Integer values. The String keys
 		are every unique lemma of every word in the current ruleset. The Integer value associated with
 		each of these lemmas is the number of times this lemma occurs as a noun argument of:
 		- any of the move types in moveTypes
@@ -169,7 +173,7 @@ public class RulesParser
 		- any synonym of the verb "become"
 		The lemma with the highest frequency as argument of any of these predicates is most likely a type of piece; 
 		moreover, it is most likely the initial type of piece that all pieces start out as in a checkers variant. */
-		HashMap<String,Integer> moveArguments = new HashMap<String,Integer>();
+		HashMap<String,Integer> arguments = new HashMap<String,Integer>();
 
 		//iterate over all sentences
 		for (int i = 0; i < sentences.size(); i++)
@@ -178,8 +182,8 @@ public class RulesParser
 			
 			for (String lemma: lemmas[i]) //iterate over all the lemmas of the current sentence;
 			{
-				if (!moveArguments.containsKey(lemma)) //if the lemma isn't in the hashmap,
-					moveArguments.put(lemma, 0); //add each lemma to the hashmap
+				if (!arguments.containsKey(lemma)) //if the lemma isn't in the hashmap,
+					arguments.put(lemma, 0); //add each lemma to the hashmap
 			}
 
 			//dependencies for current sentence as a String[], each entry containing a single dependency String
@@ -211,7 +215,7 @@ public class RulesParser
 					-it's not one of the moveTypes (phrases like "make a jump" are common enough that they usually get counted instead of
 					piece types if this isn't checked) */
 					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0) && !moveTypes.contains(lemma2))
-						moveArguments.put(lemma2, moveArguments.get(lemma2)+1); //increment value in hashmap
+						arguments.put(lemma2, arguments.get(lemma2)+1); //increment value in hashmap
 				}
 				/* if the previous if statement was false, the following if statement checks if lemma2 is:
 				- any of the move types in moveTypes
@@ -226,14 +230,14 @@ public class RulesParser
 					-it's not one of the moveTypes (phrases like "make a jump" are common enough that they usually get counted instead of
 					piece types if this isn't checked) */
 					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0) && !moveTypes.contains(lemma1)) 
-						moveArguments.put(lemma1, moveArguments.get(lemma1)+1); //increment value in hashmap
+						arguments.put(lemma1, arguments.get(lemma1)+1); //increment value in hashmap
 				}
 			}
 		}
-		/* Now we need to find the lemma with the highest frequency in moveArguments. */
+		/* Now we need to find the lemma with the highest frequency in arguments. */
 		int maxValue = -1;
 		String mostFrequentArgument = "";
-		for (Map.Entry<String,Integer> entry: moveArguments.entrySet())
+		for (Map.Entry<String,Integer> entry: arguments.entrySet())
 		{
 			if (maxValue < entry.getValue())
 			{
@@ -320,28 +324,33 @@ public class RulesParser
 		}
 	}
 
+
+	/**
+	Determines the indices of the sentences that describe the allowed directions of motion for a Piece p.
+	*/
 	public ArrayList<Integer> determineMotionSentences(Piece p)
 	{
-		String name = p.getName();
+		String name = p.getName(); //the name of the Piece p
 
+		//the following ArrayList will ultimately hold all the indices of sentences that describe the allowed motion of p
 		ArrayList<Integer> indices = new ArrayList<Integer>(1);
 
-		for (int i = 0; i < sentences.size() - 1; i++)
+		//iterate over all sentences
+		for (int i = 0; i < sentences.size(); i++)
 		{
-			CoreMap currentSentence = sentences.get(i);
-			CoreMap nextSentence = sentences.get(i+1);
+			CoreMap currentSentence = sentences.get(i); //ith (current) sentence
 
+			//dependencies of the current sentence
 			String[] currentDependencies = currentSentence.get(
-				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
-				SemanticGraph.OutputFormat.LIST).split("\n");
-			String[] nextDependencies = nextSentence.get(
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
 			boolean isNameArgument = false;
 			boolean isMovePredicate = false;
+			boolean isNegative = false;
 			int index = -1;
 
+			//iterate over all dependencies of the current sentence
 			for (int j = 1; j < currentDependencies.length; j++)
 			{
 				String d = currentDependencies[j];
@@ -352,23 +361,30 @@ public class RulesParser
 				String pos1 = partsOfSpeech[i][index1-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				// the toLowerCase mess is in place of equals() because coreNLP can't figure out that the lemma for "Pieces" is not "Pieces"
+				/* The following if statement checks for negation words in the current sentence (by looking for negative dependencies).
+				The method currently ignores sentences that have negation words, such that a sentence 
+				like "Checkers cannot move backward." is not parsed. */
+				if (d.contains("neg("))
+					isNegative = true;
+				/* The following if statement checks if name is either a subject, direct object, or open clausal complement in
+				the current sentence. */
+				/* the toLowerCase().contains(name) mess is in place of equals() because coreNLP can't figure out that the 
+				lemma for "Pieces" is not "Pieces". */
 				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")) && lemma2.toLowerCase().contains(name))
-					isNameArgument = true;	
-				
+					isNameArgument = true;
+				/* The following if statement checks if the current sentence contains any of the move types previously parsed
+				by the system as a predicate, and if so, if it either takes name or the pronoun "it" as an argument. */
 				if (moveTypes.contains(lemma1) && (lemma2.equalsIgnoreCase("it") || lemma2.toLowerCase().contains(name)))
 				{
 					isMovePredicate = true;
 					index = i;
 				}
-				/*
-				TODO:
-				-make this check for more than just nsubj(move,name)
-				-implement a check for the very last sentence
-				-test it on errythang
-				*/
+				/* The following if statement checks if the current sentence contains the noun "move" - this often describes motion for all
+				pieces. */ 
+				//TODO: should this maybe only be the case for the default piece?
 				if ((lemma1.equals("move") && pos1.charAt(0) == 'N') || (lemma2.equals("move") && pos2.charAt(0) == 'N'))
 				{
+					//if the sentence contains the noun "move," add its index to indices
 					if (!indices.contains(i))
 					{
 						indices.add(i);
@@ -376,24 +392,45 @@ public class RulesParser
 					}
 				}
 			}
-			for (int j = 1; j < nextDependencies.length; j++)
+
+			if (i < sentences.size()-1) //if we're not on the last sentence,
 			{
-				String d = nextDependencies[j];
-				int index1 = isolateIndexFromDependency(d,1);
-				int index2 = isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i+1][index1-1];
-				String lemma2 = lemmas[i+1][index2-1];	
-				
-				if (moveTypes.contains(lemma1) && lemma2.equalsIgnoreCase("it"))
+				CoreMap nextSentence = sentences.get(i+1); //i+1th (next) sentence
+
+				//dependencies of the next sentence
+				String[] nextDependencies = nextSentence.get(
+					SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+					SemanticGraph.OutputFormat.LIST).split("\n");
+
+				/* iterate over all dependencies of the next sentence. This allows for situations like:
+				"The king is a more powerful piece. It can move forwards and backwards."
+				to still be parsed; the "it" in the second sentence is dependent on the subject of the
+				previous sentence. */
+				for (int j = 1; j < nextDependencies.length; j++)
 				{
-					isMovePredicate = true;
-					if (index == -1)
-						index = i+1;
+					String d = nextDependencies[j];
+					int index1 = isolateIndexFromDependency(d,1);
+					int index2 = isolateIndexFromDependency(d,2);
+					String lemma1 = lemmas[i+1][index1-1];
+					String lemma2 = lemmas[i+1][index2-1];	
+					/* The following if statement checks if the next sentence contains any of the move types previously parsed
+					by the system as a predicate, and if so, if it the pronoun "it" as an argument.*/
+					if (moveTypes.contains(lemma1) && lemma2.equalsIgnoreCase("it"))
+					{
+						isMovePredicate = true;
+						if (index == -1)
+							index = i+1;
+					}
 				}
 			}
-			if (isNameArgument && isMovePredicate)
+			/* We only want to add a sentence's index to indices if:
+			- name is an argument either in it or the previous sentence (that is, if isNameArgument == true)
+			- one of the allowed movetypes is a predicate, which takes either name or "it" as an argument (that is, if isMovePredicate == true)
+			- the sentence is not negative (that is, if isNegative == false)
+			*/
+			if (isNameArgument && isMovePredicate && !isNegative)
 			{
-				if (!indices.contains(index))
+				if (!indices.contains(index)) //also, we don't want to add multiple of the same index
 					{
 						indices.add(index);
 						System.out.println("Motion sentence index for " + name + ": " + index);
@@ -452,7 +489,7 @@ public class RulesParser
 					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
 					Since our example sentence is one of the more common ways English language rulesets describe the motion of kings,
 					we must also check if modified is a coordinating conjunction. */
-					if (isHypernymOf("move", modified) || isSynonymOf("move", modified) || isSynonymOf("direction", modified) || isCoordinatingConjunction(modified))
+					if (moveTypes.contains(modified) || isSynonymOf("move", modified) || isSynonymOf("direction", modified) || isCoordinatingConjunction(modified))
 					{
 						//We now have to isolate the modifier as a substring.
 						String modifier = isolateWordFromDependency(d,2); //the modifier is the second word in the dependency substring
@@ -473,7 +510,7 @@ public class RulesParser
 					//Now we determine the lemma of the modified word, and see if "move" is a hypernym of it
 					String modified = lemmas[i][modifiedIndex-1]; //-1 because the sentence indices start from 1, not 0
 
-					if (isHypernymOf("move", modified) || isSynonymOf("direction", modified) || isSynonymOf("move", modified))
+					if (moveTypes.contains(modified) || isSynonymOf("direction", modified) || isSynonymOf("move", modified))
 					{
 						/*At this point, we have determined that the phrase we are looking at is a PP of the form "toward/towards [DP]" 
 						modifying some hyponym of "move." Now we have to determine the object of the proposition, and what direction of motion
@@ -491,47 +528,9 @@ public class RulesParser
 						}
 					}
 				}
-				else if (d.contains("neg"))
-				{
-					String negatedWordWithIndex = isolateWordWithIndex(d,1);
-					String negatedWord = negatedWordWithIndex.substring(0, negatedWordWithIndex.indexOf("-"));
-					addDirection(negatedWord, negatedDirections, -1);
-					parseNegatedDirections(dependencies, negatedWordWithIndex, negatedDirections);
-				}
 			}
 		}
-		for (Direction d: negatedDirections)
-			motionTypes.remove(d);
 		return motionTypes;
-	}
-
-	public void parseNegatedDirections(String[] dependencies, String negatedWordWithIndex, ArrayList<Direction> negatedDirections)
-	{
-		/*PROBLEM!!! TODO! This method so far just nixes every single word touched by a negation word. Doesn't check for any of the 
-		stuff parseMotion() checks for. Might be a problem eventually. */
-		String negatedWord = negatedWordWithIndex.substring(0, negatedWordWithIndex.indexOf("-"));
-
-		for (int i = 0; i < dependencies.length; i++)
-		{
-			String d = dependencies[i];			
-			if (isolateWordWithIndex(d,1).equals(negatedWordWithIndex))
-			{
-				String dependent = isolateWordFromDependency(d,2);
-				String dependentWithIndex = isolateWordWithIndex(d,2);
-				addDirection(dependent, negatedDirections, -1); //TODO: remove i
-
-				String[] truncatedDependencies = new String[dependencies.length-1];
-				for (int j = 0; j < dependencies.length - 1; j++)
-				{
-					if (j > i)
-						truncatedDependencies[j] = dependencies[j];
-					else
-						truncatedDependencies[j] = dependencies[j+1];
-				}
-				//after this loop, truncatedDependencies contains all the values of dependencies except d
-				parseNegatedDirections(truncatedDependencies, dependentWithIndex, negatedDirections);
-			}
-		}		
 	}
 
 	/**

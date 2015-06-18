@@ -282,15 +282,33 @@ public class RulesParser
 				String lemma2 = lemmas[i][index2-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
+				//The following checks if the sentence has any clause with name as its subject.
+				//Normally one should only check lemma2; checking lemma1 as well can help compensate for coreNLP bugs.
 				if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
 					isNameSubject = true;
+
+				/* Sometimes the word "piece" is used in a transition statement of the default piece even when "piece" is not actually
+				the name of the default piece, so when parsing the default piece, if its name is not "piece", we have to check for 
+				transition sentences treating "piece" as the name as well. 
+				The following checks if p is the default piece and if its name is not "piece", and if so,
+				checks if the sentence has any clause with "piece" as its subject. */
+				if (currentPiece.isDefault() && !name.equals("piece"))
+				{
+					if (d.contains("nsubj") && (lemma2.equals("piece") || lemma2.equals("piece")))
+						isNameSubject = true;
+				}
+				/* The following checks if the sentence contains the predicate "become", which takes a noun argument
+				as either its direct object or its open clausal complement. */
 				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 				{
-					isTransitionStatement = true;
+					isTransitionStatement = true; //if so, it is a transition statement
 					newPieceName = lemma2;
 				}
-				if (d.contains("nsubjpass") && lemma1.equals("make")) //checks if the sentence is in the passive voice and has "make" as its predicate
+				//The following checks if the sentence is in the passive voice and has "make" as its predicate.
+				if (d.contains("nsubjpass") && lemma1.equals("make"))
 					isPassiveTransition = true; 
+				/*The following checks if the sentence contains the predicate "make", which takes a noun argument
+				as either its direct object or its open clausal complement. */
 				if ((lemma1.equals("make")) && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 				{
 					/* Setting isTransitionStatement equal to isPassiveTransition (as opposed to simply setting it to true) ensures that 
@@ -305,7 +323,8 @@ public class RulesParser
 			if (isNameSubject && isTransitionStatement)
 			{
 				System.out.println("New piece found through transition: " + newPieceName + " in sentence " + i); //debugging
-				Piece newPiece = new Piece(newPieceName, currentPiece); //we add the new type of piece to pieceTypes, but only if it hasn't already been added
+				Piece newPiece = new Piece(newPieceName, currentPiece); 
+				//now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
 				{
@@ -370,17 +389,40 @@ public class RulesParser
 				the current sentence. */
 				/* the toLowerCase().contains(name) mess is in place of equals() because coreNLP can't figure out that the 
 				lemma for "Pieces" is not "Pieces". */
-				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")) && lemma2.toLowerCase().contains(name))
-					isNameArgument = true;
+				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")))
+				{
+					if (lemma2.toLowerCase().contains(name)) //if name is the argument
+						isNameArgument = true;
+
+					/* Sometimes the word "piece" is used to describe the motion of the default piece even when "piece" is not actually
+					the name of the default piece, so when parsing the default piece, if its name is not "piece", we have to check for 
+					motion sentences treating "piece" as the name as well. 
+					The following checks if p is the default piece and p.name is not "piece", and if so, if 
+					"piece" is the argument. */
+					if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
+						isNameArgument = true;
+				}
 				/* The following if statement checks if the current sentence contains any of the move types previously parsed
 				by the system as a predicate, and if so, if it either takes name or the pronoun "it" as an argument. */
-				if (moveTypes.contains(lemma1) && (lemma2.equalsIgnoreCase("it") || lemma2.toLowerCase().contains(name)))
+				if (moveTypes.contains(lemma1))
 				{
-					isMovePredicate = true;
-					index = i;
+					if ((lemma2.equalsIgnoreCase("it") || lemma2.toLowerCase().contains(name)))
+					{
+						isMovePredicate = true;
+						index = i;
+					}
+					/* Same as above: handling the default piece when its name is not "piece".
+					The following checks if p is the default piece and p.name is not "piece", and if so, if 
+					"piece" is the argument. */
+					if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
+					{
+						isMovePredicate = true;
+						index = i;
+					}
 				}
-				/* The following if statement checks if the current sentence contains the noun "move" - this often describes motion for all
-				pieces. */ 
+				/* The following if statement checks if the current sentence contains the noun "move" - a statement like
+				"Only diagonal moves are allowed." 
+				often is used to describe the motion of all pieces. */ 
 				//TODO: should this maybe only be the case for the default piece?
 				if ((lemma1.equals("move") && pos1.charAt(0) == 'N') || (lemma2.equals("move") && pos2.charAt(0) == 'N'))
 				{
@@ -445,10 +487,6 @@ public class RulesParser
 	{
 		ArrayList<Direction> motionTypes = new ArrayList<Direction>(1); 
 		//ultimately, this ArrayList will hold all of the allowed types of motion explicitly described in the ruleset
-		ArrayList<Direction> negatedDirections = new ArrayList<Direction>(1);
-		/*ultimately, this ArrayList will old all of the types of motion described in a ruleset that are within the scope of a 
-		negation word; the internal logic of parseMotion() does not distinguish between negated clauses and regular ones, so they must be 
-		interpreted separately and then removed from motionTypes. */
 
 		for (int i: indices)
 		{
@@ -705,34 +743,40 @@ public class RulesParser
 	    -If it has already been added, the method does nothing else.
 	*/
 	public void addDirection(String word, ArrayList<Direction> motionTypes, int i) 
-	{ //TODO: REMOVE i!!!
+	{
 		/*ALL of the following specifications of indices (used when calling isSynonymOf()) are specific to the WordNet 3.0 database! 
 		They must be changed for future versions of WordNet, as the indices of definitions change. */
-		if (isSynonymOf("diagonal", word, 5, 6) || isSynonymOf("diagonally", word)) //5,6 are the indices in Wordnet 3.0 of the definitions of "diagonal" that denote direction
+
+		 //5,6 are the indices in Wordnet 3.0 of the definitions of "diagonal" that denote direction
+		if (isSynonymOf("diagonal", word, 5, 6) || isSynonymOf("diagonally", word))
 		{
 			if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
 				motionTypes.add(Direction.DIAGONAL);
 			System.out.println("Sentence " + i + ": Diagonal motion added."); //debugging
 		}
-		else if (isSynonymOf("forward", word, 3, 6, 7, 9, 11)) //3,6,7,9,11 are the indices in Wordnet 3.0 of the definitions of "forward" that denote direction
+		//3,6,7,9,11 are the indices in Wordnet 3.0 of the definitions of "forward" that denote direction
+		else if (isSynonymOf("forward", word, 3, 6, 7, 9, 11))
 		{
 			if (motionTypes.indexOf(Direction.FORWARD) < 0) 
 				motionTypes.add(Direction.FORWARD);
 			System.out.println("Sentence " + i + ": Forward motion added."); //debugging
 		}
-		else if (isSynonymOf("backward", word, 0, 2, 3)) //0,2,3 are the indices in Wordnet 3.0 of the definitions of "backward" that denote direction
+		//0,2,3 are the indices in Wordnet 3.0 of the definitions of "backward" that denote direction
+		else if (isSynonymOf("backward", word, 0, 2, 3))
 		{
 			if (motionTypes.indexOf(Direction.BACKWARD) < 0)
 				motionTypes.add(Direction.BACKWARD);
 			System.out.println("Sentence " + i + ": Backward motion added."); //debugging
 		}
-		else if (isSynonymOf("left", word, 19)) //19 is the index in Wordnet 3.0 of the definitions of "left" that denote direction
+		//19 is the index in Wordnet 3.0 of the definitions of "left" that denote direction
+		else if (isSynonymOf("left", word, 19))
 		{
 			if (motionTypes.indexOf(Direction.LEFT) < 0)
 				motionTypes.add(Direction.LEFT);
 			System.out.println("Sentence " + i + ": Leftward motion added."); //debugging
 		}
-		else if (isSynonymOf("right", word, 12, 20)) //12,20 are the indices in Wordnet 3.0 of the definitions of "right" that denote direction
+		//12,20 are the indices in Wordnet 3.0 of the definitions of "right" that denote direction
+		else if (isSynonymOf("right", word, 12, 20))
 		{
 			if (motionTypes.indexOf(Direction.RIGHT) < 0)
 				motionTypes.add(Direction.RIGHT);

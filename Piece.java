@@ -53,4 +53,9 @@ public class Piece
 		return previousType;
 	}
 
+	public boolean isDefault()
+	{
+		return previousType == null;
+	}
+
 }

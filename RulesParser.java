@@ -403,10 +403,10 @@ public class RulesParser
 						isNameArgument = true;
 				}
 				/* The following if statement checks if the current sentence contains any of the move types previously parsed
-				by the system as a predicate, and if so, if it either takes name or the pronoun "it" as an argument. */
+				by the system as a predicate, and if so, if it either takes name or a pronoun as an argument. */
 				if (moveTypes.contains(lemma1))
 				{
-					if ((lemma2.equalsIgnoreCase("it") || lemma2.toLowerCase().contains(name)))
+					if ((pos2.equals("PRP") || lemma2.toLowerCase().contains(name)))
 					{
 						isMovePredicate = true;
 						index = i;
@@ -420,17 +420,21 @@ public class RulesParser
 						index = i;
 					}
 				}
-				/* The following if statement checks if the current sentence contains the noun "move" - a statement like
+
+				/* The following if statement checks p is the default piece, and if so, if the current sentence 
+				contains the noun "move". This is because a statement like 
 				"Only diagonal moves are allowed." 
-				often is used to describe the motion of all pieces. */ 
-				//TODO: should this maybe only be the case for the default piece?
-				if ((lemma1.equals("move") && pos1.charAt(0) == 'N') || (lemma2.equals("move") && pos2.charAt(0) == 'N'))
-				{
-					//if the sentence contains the noun "move," add its index to indices
-					if (!indices.contains(i))
+				often is used to describe the motion of the default piece. */
+				if (p.isDefault())
+				{ 
+					if ((lemma1.equals("move") && pos1.charAt(0) == 'N') || (lemma2.equals("move") && pos2.charAt(0) == 'N'))
 					{
-						indices.add(i);
-						System.out.println("Motion sentence index for " + name + ": " + i + " (found from move (n))");
+						//if the sentence contains the noun "move," add its index to indices
+						if (!indices.contains(i))
+						{
+							indices.add(i);
+							System.out.println("Motion sentence index for " + name + ": " + i + " (found from move (n))");
+						}
 					}
 				}
 			}
@@ -454,10 +458,10 @@ public class RulesParser
 					int index1 = isolateIndexFromDependency(d,1);
 					int index2 = isolateIndexFromDependency(d,2);
 					String lemma1 = lemmas[i+1][index1-1];
-					String lemma2 = lemmas[i+1][index2-1];	
+					String pos2 = partsOfSpeech[i+1][index2-1];
 					/* The following if statement checks if the next sentence contains any of the move types previously parsed
-					by the system as a predicate, and if so, if it the pronoun "it" as an argument.*/
-					if (moveTypes.contains(lemma1) && lemma2.equalsIgnoreCase("it"))
+					by the system as a predicate, and if so, if it takes a pronoun as an argument.*/
+					if (moveTypes.contains(lemma1) && pos2.equals("PRP"))
 					{
 						isMovePredicate = true;
 						if (index == -1)

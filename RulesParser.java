@@ -99,7 +99,7 @@ public class RulesParser
 			ArrayList<Integer> indices = determineMotionSentences(p);
 			ArrayList<Direction> motionTypes = parseMotion(indices);
 			p.addMotionTypes(motionTypes);
-			if (p.getPreviousType() != null)
+			if (!p.isDefault())
 			{
 				Piece previous = p.getPreviousType();
 				p.addMotionTypes(previous.getMotionTypes());
@@ -439,39 +439,10 @@ public class RulesParser
 				}
 			}
 
-			if (i < sentences.size()-1) //if we're not on the last sentence,
-			{
-				CoreMap nextSentence = sentences.get(i+1); //i+1th (next) sentence
-
-				//dependencies of the next sentence
-				String[] nextDependencies = nextSentence.get(
-					SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
-					SemanticGraph.OutputFormat.LIST).split("\n");
-
-				/* iterate over all dependencies of the next sentence. This allows for situations like:
-				"The king is a more powerful piece. It can move forwards and backwards."
-				to still be parsed; the "it" in the second sentence is dependent on the subject of the
-				previous sentence. */
-				for (int j = 1; j < nextDependencies.length; j++)
-				{
-					String d = nextDependencies[j];
-					int index1 = isolateIndexFromDependency(d,1);
-					int index2 = isolateIndexFromDependency(d,2);
-					String lemma1 = lemmas[i+1][index1-1];
-					String pos2 = partsOfSpeech[i+1][index2-1];
-					/* The following if statement checks if the next sentence contains any of the move types previously parsed
-					by the system as a predicate, and if so, if it takes a pronoun as an argument.*/
-					if (moveTypes.contains(lemma1) && pos2.equals("PRP"))
-					{
-						isMovePredicate = true;
-						if (index == -1)
-							index = i+1;
-					}
-				}
-			}
-			/* We only want to add a sentence's index to indices if:
-			- name is an argument either in it or the previous sentence (that is, if isNameArgument == true)
-			- one of the allowed movetypes is a predicate, which takes either name or "it" as an argument (that is, if isMovePredicate == true)
+			/* We only want to add the current sentence's index to indices if:
+			- name is an argument (that is, if isNameArgument == true)
+			- one of the allowed movetypes is a predicate, which takes either name or a pronoun as an argument 
+			  (that is, if isMovePredicate == true)
 			- the sentence is not negative (that is, if isNegative == false)
 			*/
 			if (isNameArgument && isMovePredicate && !isNegative)
@@ -482,6 +453,59 @@ public class RulesParser
 						System.out.println("Motion sentence index for " + name + ": " + index);
 					}
 			}
+
+			/* However, a lot of rulesets contain structures like:
+			"The king is a more powerful piece. It can move forwards and backwards."
+			In the second sentence, "it" refers to the piece type explicitly mentioned in the first sentence. 
+			To effectively parse structures like this, we need to check also for move-type predicates with 
+			pronoun arguments not only in the current sentence, but also in the following one. */
+			if (i < sentences.size()-1) //if we're not on the last sentence,
+			{
+				CoreMap nextSentence = sentences.get(i+1); //i+1th (next) sentence
+
+				//dependencies of the next sentence
+				String[] nextDependencies = nextSentence.get(
+					SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+					SemanticGraph.OutputFormat.LIST).split("\n");
+
+				// iterate over all dependencies of the next sentence
+				for (int j = 1; j < nextDependencies.length; j++)
+				{
+					String d = nextDependencies[j];
+					int index1 = isolateIndexFromDependency(d,1);
+					int index2 = isolateIndexFromDependency(d,2);
+					String lemma1 = lemmas[i+1][index1-1];
+					String pos2 = partsOfSpeech[i+1][index2-1];
+
+					// The following if statement checks for negation words in the next sentence (by looking for negative dependencies).
+					if (d.contains("neg("))
+						isNegative = true;
+					/* The following if statement checks if the next sentence contains any of the move types previously parsed
+					by the system as a predicate, and if so, if it takes a pronoun as an argument. */
+					if (moveTypes.contains(lemma1) && pos2.equals("PRP"))
+					{
+						isMovePredicate = true;
+						index = i+1;
+					}
+				}
+
+				/* We only want to add the next sentence's index to indices if:
+				- name is an argument in the preceding (current) sentence (that is, if isNameArgument == true)
+				- one of the allowed movetypes is a predicate in the next sentence, which takes either name or a pronoun as an argument 
+			 	 (that is, if isMovePredicate == true)
+				- neither the current sentence nor the next one is negative (that is, if isNegative == false)
+				*/
+				if (isNameArgument && isMovePredicate && !isNegative)
+				{
+					if (!indices.contains(index)) //also, we don't want to add multiple of the same index
+					{
+						indices.add(index);
+						System.out.println("Motion sentence index for " + name + ": " + index);
+					}
+				}
+
+			}
+			
 		}
 		return indices;
 

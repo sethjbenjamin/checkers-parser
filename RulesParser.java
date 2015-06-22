@@ -364,6 +364,25 @@ public class RulesParser
 		//the following ArrayList will ultimately hold all the indices of sentences that describe the allowed motion of p
 		ArrayList<Integer> indices = new ArrayList<Integer>(1);
 
+		/* This method determines if a given sentence describes the motion of the Piece p as follows.
+		A sentence is analyzed to determine if it has the following properties. If it has all of them, it is considered
+		a motion sentence for p.
+		- the name of the piece (henceforth referred to simply as "name") is a noun argument of any predicate in the sentence.
+		  (the truth value of this property is stored by the boolean variable isNameArgument)
+		- either name or a pronoun is an argument of a predicate that denotes one of the allowed types of motion in the game
+		  (the truth value of this property is stored by the boolean variable isMoveArgument)
+		- the statement does not contain a negation word (ie, it contains no negative dependencies - the truth value of this property
+		  is stored by the boolean varaible isNegative)
+
+		There are a few exceptions:
+		- if p is a default type whose name is not "piece", "piece" can substitute for name in the previous properties and the sentence
+		  will be considered a motion sentence.
+		- if name is the modifier of a noun compound (eg. "king piece" where name == king), then the modified noun ("piece" in "king piece")
+		  can also substitute for name in the previous properties and the sentence will be considered a motion sentence. (the boolean variable 
+		  isNameCompounded is set to true if name is the modifier of a noun compound, and the String compoundedNoun stores the lemma of the
+		  modified noun.)
+		*/
+
 		//iterate over all sentences
 		for (int i = 0; i < sentences.size(); i++)
 		{
@@ -375,6 +394,9 @@ public class RulesParser
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
 			boolean isNameArgument = false;
+			boolean isNameCompounded = false;
+			String compoundedNoun = null;
+			int compoundedNounIndex = -1;
 			boolean isMovePredicate = false;
 			boolean isNegative = false;
 			int index = -1;
@@ -395,6 +417,21 @@ public class RulesParser
 				like "Checkers cannot move backward." is not parsed. */
 				if (d.contains("neg("))
 					isNegative = true;
+
+				/* The following if statement checks if name is a modifier in a noun compound. This matters because sometimes a noun compound,
+				of which the current name of the piece is the modifying noun, is used instead of just name itself, for example:
+				"King pieces can move in both directions, forward and backward." uses the noun compound "king pieces" instead of just saying
+				"king". 
+				If this is the case, we have to take the modified noun in the compound - in our above example, "pieces" - and store it in
+				compoundedNoun; we do this as we will later have to check if compoundedNoun is an argument of a motion verb. (If it is,
+				we have to treat this the same as if name itself were an argument.) */
+				if (d.contains("compound(") && lemma2.toLowerCase().contains(name))
+				{
+					isNameCompounded = true;
+					compoundedNoun = lemma1;
+					compoundedNounIndex = index1;
+				}
+
 				/* The following if statement checks if name is either a subject, direct object, or open clausal complement in
 				the current sentence. */
 				/* the toLowerCase().contains(name) mess is in place of equals() because coreNLP can't figure out that the 
@@ -404,13 +441,19 @@ public class RulesParser
 					if (lemma2.toLowerCase().contains(name)) //if name is the argument
 						isNameArgument = true;
 
+					/* In case of name being a modifier in a noun compound (that is, if isNameCompounded == true), we have to check
+					if the noun it modifies is an argument as well, as this is equivalent to name itself being an argument. */
+					else if (isNameCompounded && lemma2.toLowerCase().contains(compoundedNoun) && index2 == compoundedNounIndex)
+						isNameArgument = true;
+
 					/* Sometimes the word "piece" is used to describe the motion of the default piece even when "piece" is not actually
 					the name of the default piece, so when parsing the default piece, if its name is not "piece", we have to check for 
 					motion sentences treating "piece" as the name as well. 
 					The following checks if p is the default piece and p.name is not "piece", and if so, if 
 					"piece" is the argument. */
-					if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
+					else if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
 						isNameArgument = true;
+
 				}
 				/* The following if statement checks if the current sentence contains any of the move types previously parsed
 				by the system as a predicate, and if so, if it either takes name or a pronoun as an argument. */
@@ -421,10 +464,18 @@ public class RulesParser
 						isMovePredicate = true;
 						index = i;
 					}
+					/* Same as above: in case of name being a modifier in a noun compound (that is, if isNameCompounded == true), 
+					we have to check if the noun it modifies is an argument of a motion verb as well, as this is equivalent to name itself 
+					being one. */
+					else if (isNameCompounded && lemma2.toLowerCase().contains(compoundedNoun) && index2 == compoundedNounIndex)
+					{
+						isMovePredicate = true;
+						index = i;
+					}
 					/* Same as above: handling the default piece when its name is not "piece".
 					The following checks if p is the default piece and p.name is not "piece", and if so, if 
 					"piece" is the argument. */
-					if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
+					else if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
 					{
 						isMovePredicate = true;
 						index = i;
@@ -458,10 +509,10 @@ public class RulesParser
 			if (isNameArgument && isMovePredicate && !isNegative)
 			{
 				if (!indices.contains(index)) //also, we don't want to add multiple of the same index
-					{
-						indices.add(index);
-						System.out.println("Motion sentence index for " + name + ": " + index);
-					}
+				{
+					indices.add(index);
+					System.out.println("Motion sentence index for " + name + ": " + index);
+				}
 			}
 
 			/* However, a lot of rulesets contain structures like:
@@ -514,9 +565,18 @@ public class RulesParser
 					}
 				}
 
-			}
-			
+			}	
 		}
+
+		/* This system, in order to handle anaphora, will assume a pronoun to refer to any of multiple nouns that precedes it; 
+		there doesn't seem to be a good way to handle anaphoric ambiguity using dependencies, as it doesn't really depend on syntax. 
+		This, however, causes problems, in sentences like: 
+		"A king moves the same way as a regular checker, except he can move forward or backward."
+		Such a sentence will be parsed as a motion sentence both for "checker" and for "king", as both are noun arguments that precede
+		"he". This is bad - this sentence should only be parsed as a motion statement for kings.
+		Thus, we check if p is not a default piece; if it isn't, we call its previous type, and remove all the indices of 
+		motion sentences parsed for p from the indices of motion sentences parsed for the previous type. (It is likely that
+		a sentence that mentions both types of pieces is only referring to the non-default one.) */
 		if (!p.isDefault())
 		{
 			Piece previousType = p.getPreviousType();
@@ -562,7 +622,7 @@ public class RulesParser
 					String modified = lemmas[i][modifiedIndex-1]; //-1 because the sentence indices start from 1, not 0
 
 					/*Now that we have the modified word's lemma, we determine if it is either:
-					-a hypernym of "move (v)"
+					-one of the allowed move types
 					-a synonym of "move (n)" or "direction (n)"
 					-a coordinating conjunction (explained below)
 					In a previous implementation, these dependencies (advmod and amod) were checked separately; checking for either at the same time
@@ -595,7 +655,7 @@ public class RulesParser
 					dependency string. */
 					int modifiedIndex = isolateIndexFromDependency(d,1); //the modified word is the first word in the dependency substring
 
-					//Now we determine the lemma of the modified word, and see if "move" is a hypernym of it
+					//Now we determine the lemma of the modified word, and see if it is one of the move types
 					String modified = lemmas[i][modifiedIndex-1]; //-1 because the sentence indices start from 1, not 0
 
 					if (moveTypes.contains(modified) || isSynonymOf("direction", modified) || isSynonymOf("move", modified))

@@ -5,14 +5,17 @@ public class Piece
 	private String name;
 	private ArrayList<Direction> motionTypes;
 	private Piece previousType; 
-	/*in the case that one type of piece becomes another type of piece after something happens, 
-	this field stores a reference to the first type of piece. */
+	/*in the case that this type of piece starts out as another type of piece in game play 
+	(eg. a king starts out as a checker), this field stores a reference to the initial type of piece.
+	if this field is null, this is the default type of piece. */
+	private ArrayList<Integer> motionSentences; // indices of the sentences that potentially describe the motion of this piece
 
 	public Piece(String name)
 	{
 		this.name = name;
 		this.previousType = null;
 		motionTypes = new ArrayList<Direction>(1);
+		motionSentences = new ArrayList<Integer>(1);
 	}
 
 	public Piece(String name, Piece previousType)
@@ -40,6 +43,16 @@ public class Piece
 		}
 	}
 
+	public void setMotionSentences(ArrayList<Integer> motionSentences)
+	{
+		this.motionSentences = motionSentences;
+	}
+
+	public ArrayList<Integer> getMotionSentences()
+	{
+		return motionSentences;
+	}
+
 	/**
 	Checks if two piece types have the same name.
 	*/
@@ -48,11 +61,17 @@ public class Piece
 		return this.name.equals(other.name);
 	}
 
+	/**
+	Returns a reference to the type of piece that this piece starts out as, or null if this is the default piece.
+	*/
 	public Piece getPreviousType()
 	{
 		return previousType;
 	}
 
+	/**
+	Checks if this is the default piece by seeing if previousType is null.
+	*/
 	public boolean isDefault()
 	{
 		return previousType == null;

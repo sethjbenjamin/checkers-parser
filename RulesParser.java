@@ -94,10 +94,20 @@ public class RulesParser
 		moveTypes = parseMoveTypes();
 
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
+
 		for (Piece p: pieceTypes)
 		{
 			ArrayList<Integer> indices = determineMotionSentences(p);
-			ArrayList<Direction> motionTypes = parseMotion(indices);
+			p.setMotionSentences(indices);
+		}
+		/* we have to iterate over pieceTypes two separate times, because motion sentences have to be determined for all piece 
+		types before continuing, as determineMotionSentences() when passed a non-default type alters the indices of motion sentences
+		for the default type. */
+		for (Piece p: pieceTypes)
+		{
+			/* TODO: this is kind of weird - parseMotion() could just call getMotionSentences(), 
+			and also could handle all the addMotionTypes() business */
+			ArrayList<Direction> motionTypes = parseMotion(p, p.getMotionSentences());
 			p.addMotionTypes(motionTypes);
 			if (!p.isDefault())
 			{
@@ -287,8 +297,8 @@ public class RulesParser
 				if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
 					isNameSubject = true;
 
-				/* Sometimes the word "piece" is used in a transition statement of the default piece even when "piece" is not actually
-				the name of the default piece, so when parsing the default piece, if its name is not "piece", we have to check for 
+				/* Sometimes the word "piece" is used in a transition statement of the default piece even when "piece" is not 
+				actually its name. So, when parsing the default piece, if its name is not "piece", we have to check for 
 				transition sentences treating "piece" as the name as well. 
 				The following checks if p is the default piece and if its name is not "piece", and if so,
 				checks if the sentence has any clause with "piece" as its subject. */
@@ -456,7 +466,7 @@ public class RulesParser
 
 			/* However, a lot of rulesets contain structures like:
 			"The king is a more powerful piece. It can move forwards and backwards."
-			In the second sentence, "it" refers to the piece type explicitly mentioned in the first sentence. 
+			In the second sentence, "it" refers to the piece type explicitly mentioned as a noun in the first sentence (king). 
 			To effectively parse structures like this, we need to check also for move-type predicates with 
 			pronoun arguments not only in the current sentence, but also in the following one. */
 			if (i < sentences.size()-1) //if we're not on the last sentence,
@@ -507,12 +517,24 @@ public class RulesParser
 			}
 			
 		}
+		if (!p.isDefault())
+		{
+			Piece previousType = p.getPreviousType();
+			ArrayList<Integer> previousMotionSentences = previousType.getMotionSentences();
+			for (Integer i: indices)
+			{
+				if (previousMotionSentences.remove(i))
+					System.out.println("Sentence " + i + " removed from motion sentence indices of " + previousType.getName()); //debugging
+			}
+		}
+
 		return indices;
 
 	}
 
-	public ArrayList<Direction> parseMotion(ArrayList<Integer> indices)
+	public ArrayList<Direction> parseMotion(Piece p, ArrayList<Integer> indices)
 	{
+		String name = p.getName();
 		ArrayList<Direction> motionTypes = new ArrayList<Direction>(1); 
 		//ultimately, this ArrayList will hold all of the allowed types of motion explicitly described in the ruleset
 
@@ -562,7 +584,7 @@ public class RulesParser
 
 						/*Now, we call addDirection() to check if "modifier" is a directional adverb or adjective, and if so, to
 						add it to "motionTypes". */
-						addDirection(modifier, motionTypes, i); //TODO: remove i!!!
+						addDirection(modifier, motionTypes, i, name); //TODO: remove i!!!
 					}
 				}
 				else if (d.contains("nmod:toward")) //check for a PP like "toward the opponent"
@@ -589,7 +611,7 @@ public class RulesParser
 						{
 							if (motionTypes.indexOf(Direction.FORWARD) < 0)
 								motionTypes.add(Direction.FORWARD);
-							System.out.println("Sentence " + i + ": Forward motion added, as a modifying PP."); //debugging
+							System.out.println("Sentence " + i + ": Forward motion added for " + name + " as a modifying PP"); //debugging
 
 						}
 					}
@@ -770,7 +792,7 @@ public class RulesParser
 	    -If it has not yet been added, the method adds that direction to "motionTypes."
 	    -If it has already been added, the method does nothing else.
 	*/
-	public void addDirection(String word, ArrayList<Direction> motionTypes, int i) 
+	public void addDirection(String word, ArrayList<Direction> motionTypes, int i, String name) 
 	{
 		/*ALL of the following specifications of indices (used when calling isSynonymOf()) are specific to the WordNet 3.0 database! 
 		They must be changed for future versions of WordNet, as the indices of definitions change. */
@@ -780,28 +802,28 @@ public class RulesParser
 		{
 			if (motionTypes.indexOf(Direction.DIAGONAL) < 0) //check to see if this type of motion has already been parsed
 				motionTypes.add(Direction.DIAGONAL);
-			System.out.println("Sentence " + i + ": Diagonal motion added."); //debugging
+			System.out.println("Sentence " + i + ": Diagonal motion added for " + name); //debugging
 		}
 		//3,6,7,9,11 are the indices in Wordnet 3.0 of the definitions of "forward" that denote direction
 		else if (isSynonymOf("forward", word, 3, 6, 7, 9, 11))
 		{
 			if (motionTypes.indexOf(Direction.FORWARD) < 0) 
 				motionTypes.add(Direction.FORWARD);
-			System.out.println("Sentence " + i + ": Forward motion added."); //debugging
+			System.out.println("Sentence " + i + ": Forward motion added for " + name); //debugging
 		}
 		//0,2,3 are the indices in Wordnet 3.0 of the definitions of "backward" that denote direction
 		else if (isSynonymOf("backward", word, 0, 2, 3))
 		{
 			if (motionTypes.indexOf(Direction.BACKWARD) < 0)
 				motionTypes.add(Direction.BACKWARD);
-			System.out.println("Sentence " + i + ": Backward motion added."); //debugging
+			System.out.println("Sentence " + i + ": Backward motion added for " + name); //debugging
 		}
 		//19 is the index in Wordnet 3.0 of the definitions of "left" that denote direction
 		else if (isSynonymOf("left", word, 19))
 		{
 			if (motionTypes.indexOf(Direction.LEFT) < 0)
 				motionTypes.add(Direction.LEFT);
-			System.out.println("Sentence " + i + ": Leftward motion added."); //debugging
+			System.out.println("Sentence " + i + ": Leftward motion added for " + name); //debugging
 		}
 		//12,20 are the indices in Wordnet 3.0 of the definitions of "right" that denote direction
 		else if (isSynonymOf("right", word, 12, 20))

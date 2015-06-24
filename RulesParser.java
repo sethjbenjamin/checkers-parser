@@ -177,12 +177,14 @@ public class RulesParser
 
 		/* The following hashmap associates String keys with Integer values. The String keys
 		are every unique lemma of every word in the current ruleset. The Integer value associated with
-		each of these lemmas is the number of times this lemma occurs as a noun argument of:
-		- any of the move types in moveTypes
-		- any synonym of the verb "reach"
-		- any synonym of the verb "become"
-		The lemma with the highest frequency as argument of any of these predicates is most likely a type of piece; 
-		moreover, it is most likely the initial type of piece that all pieces start out as in a checkers variant. */
+		each of these lemmas is the number of times this lemma occurs as:
+		- a noun argument of any of the move types in moveTypes
+		- a noun argument of any synonym of the verb "reach"
+		- a noun argument of any synonym of the verb "become"
+		- an appositive modifying the word "piece"
+		The lemma with the highest frequency as argument of any of these predicates or as an appositive of "piece"
+		is most likely a type of piece. Moreover, it is most likely the initial type of piece that all pieces 
+		start out as in a checkers variant. */
 		HashMap<String,Integer> arguments = new HashMap<String,Integer>();
 
 		//iterate over all sentences
@@ -241,6 +243,17 @@ public class RulesParser
 					piece types if this isn't checked) */
 					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0) && !moveTypes.contains(lemma1)) 
 						arguments.put(lemma1, arguments.get(lemma1)+1); //increment value in hashmap
+				}
+				// the following if statement checks if lemma2 is an appositive modifying the noun "piece"
+				else if (d.contains("appos(") && lemma1.equals("piece"))
+				{
+					/* again, we only increment lemma2's value in the hashmap if:
+					-it's a noun
+					-it is not "player" or some synonym (0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) 
+					-it's not one of the moveTypes (phrases like "make a jump" are common enough that they usually get counted instead of
+					piece types if this isn't checked) */
+					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0) && !moveTypes.contains(lemma2))
+						arguments.put(lemma2, arguments.get(lemma2)+1); //increment value in hashmap
 				}
 			}
 		}

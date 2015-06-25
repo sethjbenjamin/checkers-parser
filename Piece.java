@@ -54,19 +54,24 @@ public class Piece
 	}
 
 	/**
-	Checks if two piece types have the same name.
-	*/
-	public boolean equals(Piece other)
-	{
-		return this.name.equals(other.name);
-	}
-
-	/**
 	Returns a reference to the type of piece that this piece starts out as, or null if this is the default piece.
 	*/
 	public Piece getPreviousType()
 	{
 		return previousType;
+	}
+
+	public void setPreviousType(Piece previousType)
+	{
+		this.previousType = previousType;
+	}
+
+	/**
+	Checks if two piece types have the same name.
+	*/
+	public boolean equals(Piece other)
+	{
+		return this.name.equals(other.name);
 	}
 
 	/**

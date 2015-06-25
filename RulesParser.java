@@ -181,10 +181,8 @@ public class RulesParser
 		- a noun argument of any of the move types in moveTypes
 		- a noun argument of any synonym of the verb "reach"
 		- a noun argument of any synonym of the verb "become"
-		- an appositive modifying the word "piece"
 		The lemma with the highest frequency as argument of any of these predicates or as an appositive of "piece"
-		is most likely a type of piece. Moreover, it is most likely the initial type of piece that all pieces 
-		start out as in a checkers variant. */
+		is most likely a type of piece. */
 		HashMap<String,Integer> arguments = new HashMap<String,Integer>();
 
 		//iterate over all sentences
@@ -244,17 +242,6 @@ public class RulesParser
 					if (pos1.charAt(0) == 'N' && !isSynonymOf("player", lemma1, 0) && !moveTypes.contains(lemma1)) 
 						arguments.put(lemma1, arguments.get(lemma1)+1); //increment value in hashmap
 				}
-				// the following if statement checks if lemma2 is an appositive modifying the noun "piece"
-				else if (d.contains("appos(") && lemma1.equals("piece"))
-				{
-					/* again, we only increment lemma2's value in the hashmap if:
-					-it's a noun
-					-it is not "player" or some synonym (0 is the index of the Wordnet 3.0 definition of "player" related to gameplay) 
-					-it's not one of the moveTypes (phrases like "make a jump" are common enough that they usually get counted instead of
-					piece types if this isn't checked) */
-					if (pos2.charAt(0) == 'N' && !isSynonymOf("player", lemma2, 0) && !moveTypes.contains(lemma2))
-						arguments.put(lemma2, arguments.get(lemma2)+1); //increment value in hashmap
-				}
 			}
 		}
 		/* Now we need to find the lemma with the highest frequency in arguments. */
@@ -267,18 +254,20 @@ public class RulesParser
 				maxValue = entry.getValue();
 				mostFrequentArgument = entry.getKey();
 			}
+			if (entry.getValue() > 0)
+				System.out.println(entry.getKey() + ": " + entry.getValue());
 		}
 
-		System.out.println("Default piece type parsed: " + mostFrequentArgument); //debugging
+		System.out.println("First piece type parsed: " + mostFrequentArgument); //debugging
 		Piece defaultPiece = new Piece(mostFrequentArgument);
 		pieceTypes.add(defaultPiece);
-		parseTransitionStatements(defaultPiece, pieceTypes);
-		
+		parseTransitionTypes(defaultPiece, pieceTypes);
+		parsePreviousTypes(defaultPiece, pieceTypes);
 		return pieceTypes;
 		
 	}
 
-	public void parseTransitionStatements(Piece currentPiece, ArrayList<Piece> pieceTypes)
+	public void parseTransitionTypes(Piece currentPiece, ArrayList<Piece> pieceTypes)
 	{
 		for (int i = 0; i < sentences.size(); i++)
 		{
@@ -288,13 +277,12 @@ public class RulesParser
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
-
 			String name = currentPiece.getName();
 			boolean isNameSubject = false;
 			boolean isTransitionStatement = false;
 			boolean isPassiveTransition = false; //used for a construction like "a checker is made a king"
 
-			String newPieceName = null; 
+			String transitionPieceName = null; 
 
 			for (int j = 1; j < dependencies.length; j++)
 			{
@@ -325,7 +313,7 @@ public class RulesParser
 				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 				{
 					isTransitionStatement = true; //if so, it is a transition statement
-					newPieceName = lemma2;
+					transitionPieceName = lemma2;
 				}
 				//The following checks if the sentence is in the passive voice and has "make" as its predicate.
 				if (d.contains("nsubjpass") && lemma1.equals("make"))
@@ -339,19 +327,88 @@ public class RulesParser
 					This ensures that sentences like "the checker is made a king" are parsed as transition statements, 
 					but sentences like "the checker makes a jump" are not. */
 					isTransitionStatement = isPassiveTransition;
-					newPieceName = lemma2;
+					transitionPieceName = lemma2;
 				}
 			}
 
 			if (isNameSubject && isTransitionStatement)
 			{
-				System.out.println("New piece found through transition: " + newPieceName + " in sentence " + i); //debugging
-				Piece newPiece = new Piece(newPieceName, currentPiece); 
+				System.out.print("New transition piece found: " + transitionPieceName + " in sentence " + i); //debugging
+				System.out.println(" (previous type: " + name + ")"); //debugging
+				Piece transitionPiece = new Piece(transitionPieceName, currentPiece); 
 				//now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
 				{
-					if (p.equals(newPiece))
+					if (p.equals(transitionPiece))
+					{
+						isAlreadyAdded = true;
+						if (!p.getPreviousType().equals(currentPiece)) //TODO
+							p.setPreviousType(currentPiece);
+						break; //don't need to check the rest
+					}
+				}
+				if (!isAlreadyAdded) // if the piece hasn't already been added,
+				{
+					pieceTypes.add(transitionPiece); //add it
+					parseTransitionTypes(transitionPiece, pieceTypes); // check for transition statements on the new piece
+				}
+
+			}
+		}
+	}
+
+	public void parsePreviousTypes(Piece laterPiece, ArrayList<Piece> pieceTypes)
+	{
+		for (int i = 0; i < sentences.size(); i++)
+		{
+			CoreMap sentence = sentences.get(i);
+			//dependencies for current sentence as a String[], each entry containing a single dependency String
+			String[] dependencies = sentence.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+				SemanticGraph.OutputFormat.LIST).split("\n");
+
+			String name = laterPiece.getName();
+			boolean isNameObject = false;
+			boolean isSubjectNoun = false;
+			int indexOfBecomeSubject = -1;
+			int indexOfBecomeObject = -1;
+			String previousPieceName = null; 
+
+			for (int j = 1; j < dependencies.length; j++)
+			{
+				String d = dependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas[i][index1-1];
+				String lemma2 = lemmas[i][index2-1];
+				String pos2 = partsOfSpeech[i][index2-1];
+
+				if ((d.contains("nsubj")) && lemma1.equals("become") && pos2.charAt(0) == 'N' && !lemma2.equals(name))
+				{
+					isSubjectNoun = true;
+					previousPieceName = lemma2;
+					indexOfBecomeSubject = index1;
+				}
+				if ((d.contains("dobj") || d.contains("xcomp")) && lemma1.equals("become") && lemma2.equals(name))
+				{
+					isNameObject = true;
+					indexOfBecomeObject = index1;
+				}
+			}
+
+			if (isNameObject && isSubjectNoun && (indexOfBecomeSubject == indexOfBecomeObject))
+			{
+				System.out.print("New previous piece found: " + previousPieceName + " in sentence " + i); //debugging
+				System.out.println(" (transition type: " + name + ")"); //debugging
+				Piece previousPiece = new Piece(previousPieceName); 
+				//we have to set the previousType of laterPiece to this newly parsed piece
+				laterPiece.setPreviousType(previousPiece);
+				//now we add the new type of piece to pieceTypes, but only if it hasn't already been added
+				boolean isAlreadyAdded = false;
+				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
+				{
+					if (p.equals(previousPiece))
 					{
 						isAlreadyAdded = true;
 						break; //don't need to check the rest
@@ -359,12 +416,16 @@ public class RulesParser
 				}
 				if (!isAlreadyAdded) // if the piece hasn't already been added,
 				{
-					pieceTypes.add(newPiece); //add it
-					parseTransitionStatements(newPiece, pieceTypes); // check for transition statements on the new piece
+					pieceTypes.add(previousPiece); //add it
+					parsePreviousTypes(previousPiece, pieceTypes);
 				}
+
 			}
 		}
+
 	}
+
+
 
 
 	/**

@@ -1,0 +1,41 @@
+Checkers
+
+Start position and game object
+
+Checkers is played on a standard 64 square chess board. The whole game is performed on dark squares only and each player starts to play with twelve pieces - pawns, located in three rows on the player's side.
+
+
+
+The object of this game is to capture all opponent's pieces or reach a position where your opponent cannot make a legal move.
+
+
+Movement of pieces
+
+Pawns can move only one space diagonally forward, they cannot move backward. The following picture shows an example of white pawn move.
+
+
+
+If a pawn reaches the opposite side of the board (the last row), it turns to a king who adds backward moves to his abilities.
+
+
+
+
+How to capture opponent's pieces
+
+If a pawn stands next to an opponent's piece (forward direction) and the next space beyond this piece is empty, then the player must capture the opponent's piece by jumping over it and removes it from the board. The captured piece will appear under (or over, depending on the board orientation) the board in Captured pieces field to inform the players about the game status.
+
+
+
+If, after jumping, it is possible to jump over another opponent's piece, the player must capture this piece too. It means that the player can capture several pieces in one move.
+
+
+The same rule applies on a king with the only difference - kings can capture an opponent's piece backward as well.
+
+
+
+Other important rules
+
+The player can jump over opponent's pieces only, not over his/her own ones.
+Jumping is mandatory. BrainKing.com will not allow you to make a "normal" move if you can capture one or more opponent's pieces in the current position.
+If the player has more possibilities to capture opponent's pieces, he/she can select any of them. However, when a queen (in variants with long jumps) can make a jump, the player cannot select a pawn to jump with.
+The pawn that have jumped over an opponent's piece and turned to a king (reached the opposite side of the board), does not have to continue jumping as a king in this round, even if it would be possible. When a pawn promotes to a king, the move is ALWAYS finished.

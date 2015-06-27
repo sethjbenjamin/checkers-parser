@@ -1,0 +1,41 @@
+Basic rules 
+Checkers is a two-player game, where one player is assigned white checkers and the other red. Each player has 12 checkers to start the game. 
+
+Aim of the game 
+The object of the game is to capture the other player's checkers or make them impossible to move 
+
+Start of the game 
+The game is started in the position shown below on a checkers board consisting of 64 squares in an 8x8 grid. The red player moves first. Then each player takes a single turn. In fact, a player must move in turn. In other words a move cannot be skipped. 
+
+ 
+
+Playing the game 
+A move consists of placing one checker on a different square.	
+
+Capture 
+Captures or 'jumps' are mandatory. If a square diagonally in front of a man is occupied by an opponent's piece, and if the square beyond that piece in the same direction is empty, the man may 'jump' over the opponent's piece and land on the empty square. The opponent's piece is captured and removed from the board. 
+
+Multiple Jumps 
+If, after making a capture, a piece is in a position to make another capture (either along the same diagonal or a different one) it must do so, all as part of the same turn. 
+Capturing two opposing pieces in a turn is called a double jump, capturing three pieces in a turn is a triple jump , and so on. 
+
+If you have a choice of jumps, you may choose among them, regardless of whether they are multiple or not. 
+
+The Kings 
+When a single piece reaches the last rank of the board by reason of a move, or as the completion of a 'jump', it becomes a king; and that completes the move, or 'jump'.
+A King can move in any direction and 'jump' in any direction one or more pieces, as the limits of the board permit. The King can only jump diagonally over one adjacent piece at a time, in any of the four diagonal directions. Multiple jumps apply to kings as well. 
+
+Time control 
+A clock is used to limit the length of a game. These clocks count the time that each player separately takes for making his own moves. The rules are very simple, if you run out of time, you lose the game, and thus must budget your time. 
+
+End of the game 
+
+Winning	
+The game is won by the player
+who has captured all of the opponent's pieces
+whose opponent declares he resigns.
+Losing 
+The game is lost by a player who cannot make any legal move on the board. 
+
+Draw 
+The game is drawn when there is no capture or promotion to king for 40 consecutive moves.

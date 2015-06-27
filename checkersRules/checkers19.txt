@@ -1,0 +1,16 @@
+The Rules of Checkers
+The rules of checkers are really not that complicated, and the simplistic nature of this two player game is no doubt a major reason why the game has been so popular for so long. Checkers is played on a game board that’s the same as chess, containing an eight by eight grid of squares of alternating color: typically black and white.
+
+There’s a total of 24 pieces used in the game. These are usually flat and cylindrical and are split into two colors; 12 darker pieces and 12 lighter pieces. Black and red are the most common colors used in most sets, although traditionally it was white and red. White and red pieces are still used in most official tournaments.
+
+To start with, the two players assume their positions on opposite sides of the board and place their 12 pieces on the darker squares of the three rows closest to them on the board. The row that’s closest to each player is known as either the crown head or kings row. The player with the darker colored pieces is the first to move.
+
+There are two different types of moves that can be made in checkers. The first is the “simple move,” which is moving a piece one square diagonally onto an unoccupied dark square. Pieces must always end up on a dark square and can only move forward. The second type of move is the “jump”, which is moving a piece from a square diagonally adjacent to an opponent’s piece to an empty square immediately beyond the opponent’s piece. The piece is effectively jumping over the square containing the opponent’s piece.
+
+When a player makes a jump move, the opponent’s piece that’s jumped over is captured and removed from the board. Multiple jumps are permitted if, following one jump, the same piece can make another jump. Any number of jumps is allowed to take place in one move if they are possible. Any pieces that are jumped over are captured and removed from the board.
+
+A player must always make a jump move if they can, even if making such a move is technically a bad one. For example, if a player can make a jump move to capture but doing so leaves they open for their opponent to make a move with multiple jumps, then they must still make that move.
+
+If a player manages to move a piece to the kings row on their opponent’s side of the board, that piece is then kinged, or crowned. To show that a piece is kinged another piece of the same color (not one in play) is stacked on top of the original piece. This piece is now known as a king, and can move backwards as well as forwards. A player can have multiple kings if they move more than one piece to their opponent’s king’s row during the game.
+
+A game of checkers is won if a player manages to capture all of their opponent’s pieces, or leaves them with no available moves. A game can also end in a draw if both players agree or if neither player can make a legal move.

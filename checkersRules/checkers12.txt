@@ -1,0 +1,44 @@
+Sit across from your opponent. The board and checkers should be in between you and your opponent. Before you set up the board, you should determine who goes first. You can do this based on who won the last game, a coin toss, or by any other method. The person who will go first will take the black checkers and the other will take the red.
+Though some people believe that the player with the red checkers should go first, traditionally, the player with the black checkers always goes first.
+
+Set up the board. The board is made up of 64 alternating dark and light squares which appear in 8 rows of 8. There are 32 light squares and 32 dark squares. Each player should have the light square on the right side corner closest to him or her. The checker pieces will only move on the dark squares, so each player should set up his pieces on the 12 dark squares in the first three rows closest to him or her, setting up three rows of 4 checkers.
+Since the board has 8 rows, 6 of the rows will be taken up by the players' checkers, leaving two open rows in the middle of the board.
+
+Take turns moving the checkers one space diagonally. Checkers can only move diagonally forward, and can only move once during a non-capturing move. The checkers will move in the direction of the opponent's checkers.
+Checkers can change which direction they're going diagonally, but they must still always move forward.
+
+Jump your opponent's checkers. You can jump your opponent's checkers -- or make a capturing move -- if your checker is located just one diagonal space behind your opponent's checker, so that you would still move forward to capture the piece. To capture the piece, just jump over it by moving two diagonal spaces in the same direction, effectively hopping over your opponent's checker. Once you capture the checker, you can take it off the board.
+If you have the opportunity to jump your opponent's checker, then you have to take it.
+If you have the opportunity to jump your opponent's checker in multiple parts of the board, then you can choose which checkers you'd like to jump.
+If you're capturing a checker, you can still only move forward once. But if the new position you land in gives you a direct opportunity to capture another checker, then you can keep going until you can't jump any more of your opponent's checkers.
+
+King your pieces when they reach the end of your opponent's board. To crown your piece to make it king, simply place one of your own captured pieces on top of it, so it's easily distinguishable because of its height. The king can still only move horizontally on the black squares, but he can move forward and backward, so it's easier for the king to capture the opponent's checkers.
+Kings can still only move one diagonal space at a time during a non-capture move. However, when a king is capturing checkers, it can move forward and backward on the same turn.
+Some checkers sets have a crown on the back of the checkers, so you can just flip a piece over once its crowned to designate it as the king instead.
+There is no limit to how many crowned pieces you can have.
+
+Continue jumping your opponent's pieces until they are all removed. Once you have done this, you've won!
+A less common way to win is when all of your opponent's pieces are blocked so that you opponent can't make any more moves.
+Another less common way is when all your checker pieces (still remaining) make it back to the starting line.
+
+Don't play defensively. Though a beginner may be tempted to keep his pieces at the edges of the board and to try to avoid the opponent's checkers as much as possible, you won't lose if you're afraid to seize an opportunity, and your opponent's checkers won't get captured on their own.
+Instead, be bold and try to capture your opponent's checkers whenever you can.
+
+Move your pieces together. If you move a stray checker a few squares forward without moving the rest of your checkers, that piece will be vulnerable to capture. Instead, try moving your checkers together -- think of them as a row of phalanx.
+If they move together, it will be harder for your opponent to capture your checkers, and if your opponent does still manage to capture your checker, then you'll have a piece waiting to capture his checker as well.
+
+Keep a full back row for as long as you can. This is the best way to keep your opponent from crowning his pieces and to capture any opposing pieces that approach the back row.
+
+Know when to sacrifice your pieces. There's a right time for you to sacrifice your checkers. If you're ahead in the game, or even dead even with your opponent, don't be afraid to sacrifice a piece if it means you'll be able to capture your opponent's piece right back. Keep the forward momentum going.
+Do what you can to avoid having your king captured. The king is much more valuable than a regular checker.
+Don't trade pieces if it will make it easier for your opponent to king a piece.
+Trade one for two. Give up one of your pieces if it means you can capture two of your opponent's pieces in return.
+
+Focus on the kings. You should focus on crowning as many of your pieces as possible, as well as on keeping your opponent from crowning his pieces. This should be a priority as you advance in the game. However, don't crown your pieces if it means losing several checkers on the way. Be strategic about knowing when to crown your piece.
+
+Don't forget to block. If your opponent's pieces are blocked, he will lose a turn. Try to keep his pieces blocked if you can, and you can work on capturing more of his pieces or crowning your own.
+
+Keep practicing. Though there's no fool-proof way to win at checkers every single time, the more you play, the more you'll understand how to strategize. If you want to be a checkers expert, you should try to play as much as you can to improve your game.
+Try playing with someone above your skill level. This will challenge you and will force you to pick up your game.
+
+Watch an expert. Watch an expert checkers player kick up his game, either in person or on television. You'll pick up a lot of pointers just by watching an expert maneuver his pieces.

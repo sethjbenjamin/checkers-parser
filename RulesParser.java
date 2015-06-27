@@ -66,8 +66,20 @@ public class RulesParser
 				int j = 0;
 				for(CoreMap token: sentence.get(CoreAnnotations.TokensAnnotation.class)) //iterate over each word
 				{
-					lemmas[i][j] = token.get(CoreAnnotations.LemmaAnnotation.class);
-					partsOfSpeech[i][j] = token.get(CoreAnnotations.PartOfSpeechAnnotation.class);
+					/* Lemmatization in CoreNLP is bad at dealing with capital letters and, occasionally, plural nouns.
+					(For example: CoreNLP often thinks the lemma of "Checkers" is not "checker", but instead, "Checkers".)
+					To compensate, we set every lemma to lower case and remove the final -s from any noun that ends in it;
+					this is not a perfect solution, but it works for the purposes of parsing piece types. */
+					String lemma = token.get(CoreAnnotations.LemmaAnnotation.class).toLowerCase(); //make all lemmas lower case
+					String pos = token.get(CoreAnnotations.PartOfSpeechAnnotation.class);
+
+					lemmas[i][j] = lemma;
+					partsOfSpeech[i][j] = pos;
+
+					//remove the final s from noun lemmas that end in it
+					if (pos.charAt(0) == 'N' && lemma.charAt(lemma.length()-1) == 's')
+						lemmas[i][j] =  lemma.substring(0, lemma.length()-1);
+
 					j++;
 				}
 
@@ -298,16 +310,6 @@ public class RulesParser
 				if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
 					isNameSubject = true;
 
-				/* Sometimes the word "piece" is used in a transition statement of the default piece even when "piece" is not 
-				actually its name. So, when parsing the default piece, if its name is not "piece", we have to check for 
-				transition sentences treating "piece" as the name as well. 
-				The following checks if p is the default piece and if its name is not "piece", and if so,
-				checks if the sentence has any clause with "piece" as its subject. */
-				if (currentPiece.isDefault() && !name.equals("piece"))
-				{
-					if (d.contains("nsubj") && (lemma2.equals("piece") || lemma2.equals("piece")))
-						isNameSubject = true;
-				}
 				/* The following checks if the sentence contains the predicate "become", which takes a noun argument
 				as either its direct object or its open clausal complement. */
 				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
@@ -343,7 +345,7 @@ public class RulesParser
 					if (p.equals(transitionPiece))
 					{
 						isAlreadyAdded = true;
-						if (!p.getPreviousType().equals(currentPiece)) //TODO: is this necessary
+						if (p.getPreviousType() == null || !p.getPreviousType().equals(currentPiece)) //TODO: is this necessary
 							p.setPreviousType(currentPiece);
 						break; //don't need to check the rest
 					}
@@ -561,12 +563,12 @@ public class RulesParser
 				lemma for "Pieces" is not "Pieces". */
 				if ((d.contains("nsubj") || d.contains("xcomp") || d.contains("dobj")))
 				{
-					if (lemma2.toLowerCase().contains(name)) //if name is the argument
+					if (lemma2.equals(name)) //if name is the argument
 						isNameArgument = true;
 
 					/* In case of name being a modifier in a noun compound (that is, if isNameCompounded == true), we have to check
 					if the noun it modifies is an argument as well, as this is equivalent to name itself being an argument. */
-					else if (isNameCompounded && lemma2.toLowerCase().contains(compoundedNoun) && index2 == compoundedNounIndex)
+					else if (isNameCompounded && lemma2.equals(compoundedNoun) && index2 == compoundedNounIndex)
 						isNameArgument = true;
 
 					/* Sometimes the word "piece" is used to describe the motion of the default piece even when "piece" is not actually
@@ -574,7 +576,7 @@ public class RulesParser
 					motion sentences treating "piece" as the name as well. 
 					The following checks if p is the default piece and p.name is not "piece", and if so, if 
 					"piece" is the argument. */
-					else if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
+					else if (p.isDefault() && !name.equals("piece") && lemma2.equals("piece"))
 						isNameArgument = true;
 
 				}
@@ -582,7 +584,7 @@ public class RulesParser
 				by the system as a predicate, and if so, if it either takes name or a pronoun as an argument. */
 				if (moveTypes.contains(lemma1))
 				{
-					if ((pos2.equals("PRP") || lemma2.toLowerCase().contains(name)))
+					if ((pos2.equals("PRP") || lemma2.equals(name)))
 					{
 						isMovePredicate = true;
 						index = i;
@@ -590,7 +592,7 @@ public class RulesParser
 					/* Same as above: in case of name being a modifier in a noun compound (that is, if isNameCompounded == true), 
 					we have to check if the noun it modifies is an argument of a motion verb as well, as this is equivalent to name itself 
 					being one. */
-					else if (isNameCompounded && lemma2.toLowerCase().contains(compoundedNoun) && index2 == compoundedNounIndex)
+					else if (isNameCompounded && lemma2.equals(compoundedNoun) && index2 == compoundedNounIndex)
 					{
 						isMovePredicate = true;
 						index = i;
@@ -598,7 +600,7 @@ public class RulesParser
 					/* Same as above: handling the default piece when its name is not "piece".
 					The following checks if p is the default piece and p.name is not "piece", and if so, if 
 					"piece" is the argument. */
-					else if (p.isDefault() && !name.equals("piece") && lemma2.toLowerCase().contains("piece"))
+					else if (p.isDefault() && !name.equals("piece") && lemma2.equals("piece"))
 					{
 						isMovePredicate = true;
 						index = i;

@@ -111,7 +111,7 @@ public class RulesParser
 
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
 
-		//System.out.println(determineReferent(16, 15)); //debugging
+		System.out.println(determineReferent(16, 16)); //debugging
 
 		for (Piece p: pieceTypes)
 		{
@@ -313,8 +313,16 @@ public class RulesParser
 
 				//The following checks if the sentence has any clause with name as its subject.
 				//Normally one should only check lemma2; checking lemma1 as well can help compensate for coreNLP bugs.
-				if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
-					isNameSubject = true;
+				/*if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
+					isNameSubject = true;*/
+
+				/* The following checks if the sentence contains the predicate "become" with either name or a pronoun 
+				that refers to name as its subject. */
+				if (d.contains("nsubj") && lemma1.equals("become"))
+				{
+					if (lemma2.equals(name) || (pos2.equals("PRP") && determineReferent(i, index2).equals(name)))
+						isNameSubject = true;
+				}
 
 				/* The following checks if the sentence contains the predicate "become", which takes a noun argument
 				as either its direct object or its open clausal complement. */
@@ -814,16 +822,25 @@ public class RulesParser
 
 	public String determineReferent(int sentenceIndex, int wordIndex)
 	{
-		//sentence indices start at 0 for field "sentences", but 1 for the corefchain, word indices start at 1
+		//sentence indices start at 0 for field "sentences" / for parameter sentenceIndex, but start at 1 for the corefchain
+		// word indices start at 1
+		//iterate over all CorefChains
 		for (Map.Entry<Integer, CorefChain> entry: corefChains.entrySet())
 		{
+			//iterate over all CorefMentions in current CorefChain - all the phrases used to refer to a single referent
 			for (CorefChain.CorefMention mention: entry.getValue().getMentionsInTextualOrder())
 			{
+				//We're only interested if mention (the full NP used to denote a referent) occurs in the sentence we want to look at
+				//subtract 1 because the corefchain sentence indices start at 1 and ours start at 0
 				if (mention.sentNum - 1 == sentenceIndex)
 				{
+					//tokens is a list of the words in the current sentence
 					List<CoreLabel> tokens = sentences.get(mention.sentNum - 1).get(CoreAnnotations.TokensAnnotation.class);
-					if (mention.headIndex - 1 == wordIndex)
+					//if the head of the referring NP is the word we are trying to determine the referent of,
+					if (mention.headIndex == wordIndex) // (we test this by comparing their indices in the sentence)
 					{
+						/*then we get the "representative mention" phrase - that is, what CoreNLP thinks is the
+						R-expression that refers to the referent, as opposed to an anaphor - and return its head word */
 						CorefChain.CorefMention referentMention = entry.getValue().getRepresentativeMention();
 						CoreLabel referentWord = sentences.get(referentMention.sentNum - 1).get(
 							CoreAnnotations.TokensAnnotation.class).get(referentMention.headIndex - 1);

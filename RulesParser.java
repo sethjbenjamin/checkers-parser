@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import edu.stanford.nlp.dcoref.CorefChain;
+import edu.stanford.nlp.dcoref.CorefCoreAnnotations;
 import edu.stanford.nlp.io.*;
 import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.pipeline.*;
@@ -22,6 +24,7 @@ public class RulesParser
 	private StanfordCoreNLP pipeline;
 	private Annotation annotation;
 	private List<CoreMap> sentences;
+	private Map<Integer, CorefChain> corefChains;
 	private String[][] lemmas; //lemmas[i][j] holds the lemma of the jth word in the ith sentence of the text
 	private String[][] partsOfSpeech; //partsOfSpeech[i][j] holds the POS of the jth word in the ith sentence of the text
 	//WordNet 3.0 implementation using JAWS:
@@ -34,9 +37,9 @@ public class RulesParser
 	{
 		this.fileName = fileName;
 
-		// creates a StanfordCoreNLP object, with sentence splitting, POS tagging, lemmatization, and parsing
+		// creates a StanfordCoreNLP object, with sentence splitting, POS tagging, lemmatization, parsing, NER, and coreference resolution
 		Properties annotators = new Properties();
-		annotators.put("annotators", "tokenize, ssplit, pos, lemma, parse"); //TODO: add NER later to interpret numbers
+		annotators.put("annotators", "tokenize, ssplit, pos, lemma, parse, ner, dcoref");
 		pipeline = new StanfordCoreNLP(annotators);
 
 		wordnet = WordNetDatabase.getFileInstance();
@@ -50,6 +53,7 @@ public class RulesParser
 			pipeline.annotate(annotation);
 
 			sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
+			corefChains = annotation.get(CorefCoreAnnotations.CorefChainAnnotation.class);
 
 			lemmas = new String[sentences.size()][];
 			partsOfSpeech = new String[sentences.size()][];
@@ -107,6 +111,8 @@ public class RulesParser
 
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
 
+		//System.out.println(determineReferent(16, 15)); //debugging
+
 		for (Piece p: pieceTypes)
 		{
 			ArrayList<Integer> indices = determineMotionSentences(p);
@@ -117,8 +123,8 @@ public class RulesParser
 		for the default type. */
 		for (Piece p: pieceTypes)
 		{
-			/* TODO: this is kind of weird - parseMotion() could just call getMotionSentences(), 
-			and also could handle all the addMotionTypes() business */
+			// TODO: this is kind of weird - parseMotion() could just call getMotionSentences(), 
+			// and also could handle all the addMotionTypes() business 
 			ArrayList<Direction> motionTypes = parseMotion(p, p.getMotionSentences());
 			p.addMotionTypes(motionTypes);
 			if (!p.isDefault())
@@ -804,6 +810,31 @@ public class RulesParser
 			}
 		}
 		return motionTypes;
+	}
+
+	public String determineReferent(int sentenceIndex, int wordIndex)
+	{
+		//sentence indices start at 0 for field "sentences", but 1 for the corefchain, word indices start at 1
+		for (Map.Entry<Integer, CorefChain> entry: corefChains.entrySet())
+		{
+			for (CorefChain.CorefMention mention: entry.getValue().getMentionsInTextualOrder())
+			{
+				if (mention.sentNum - 1 == sentenceIndex)
+				{
+					List<CoreLabel> tokens = sentences.get(mention.sentNum - 1).get(CoreAnnotations.TokensAnnotation.class);
+					if (mention.headIndex - 1 == wordIndex)
+					{
+						CorefChain.CorefMention referentMention = entry.getValue().getRepresentativeMention();
+						CoreLabel referentWord = sentences.get(referentMention.sentNum - 1).get(
+							CoreAnnotations.TokensAnnotation.class).get(referentMention.headIndex - 1);
+						return referentWord.get(CoreAnnotations.TextAnnotation.class);
+					}
+				}
+			}
+		}
+		return ""; //dummy value
+
+
 	}
 
 	/**

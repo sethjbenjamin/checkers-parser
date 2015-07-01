@@ -111,7 +111,7 @@ public class RulesParser
 
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
 
-		System.out.println(determineReferent(16, 16)); //debugging
+		System.out.println(determineReferent(23, 28)); //debugging
 
 		for (Piece p: pieceTypes)
 		{
@@ -385,19 +385,10 @@ public class RulesParser
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
 			String name = laterPiece.getName();
-
-			boolean isBecomeObjectName = false;
-			boolean isBecomeSubjectNoun = false;
-			boolean isBecomeSubjectPronoun = false;
-
-			boolean isReachSubjectNoun = false;
-			boolean isReachSubjectNumber = false;
-			int numberIndex = -1;
-
-			int indexOfBecomeSubj = -1;
-			int indexOfBecomeObj = -1;
+			boolean isObjectName = false;
 
 			String previousPieceName = null; 
+			String subjectOfReach = null;
 
 			for (int j = 1; j < dependencies.length; j++)
 			{
@@ -411,58 +402,38 @@ public class RulesParser
 				/* The following checks if the sentence contains the predicate "become", specifically taking name
 				as either its direct object or its open clausal complement.*/
 				if ((d.contains("dobj") || d.contains("xcomp")) && lemma1.equals("become") && lemma2.equals(name))
-				{
-					isBecomeObjectName = true;
-					indexOfBecomeObj = index1;
-				}
-				/* The following checks if the sentence contains the predicate "become", which takes either a noun or a pronoun 
-				argument as its subject. If the subject is a noun, it is assumed to be a piece name and stored in previousPieceName.
-				If the subject is a pronoun, we must determine what noun is its antecedent. */
-				if ((d.contains("nsubj")) && lemma1.equals("become") && !lemma2.equals(name))
-				{ 	
-					if (pos2.charAt(0) == 'N')
-					{
-						isBecomeSubjectNoun = true;
-						previousPieceName = lemma2;
-					}
-					else if (pos2.equals("PRP"))
-						isBecomeSubjectPronoun = true;
+					isObjectName = true;
 
-					indexOfBecomeSubj = index1;
-				}
-				/*The following two if blocks are to determine, given that the subject of "become" is not a noun (ie, it is a pronoun),
-				what its antecedent is. */
-				/*The following if block checks:
-				-if the subject of "become" is not a noun (if it is, that noun is probably the type of piece we want to parse, 
-				 so we don't want to change previousPieceName at all)
-				- if the sentence contains a predicate that is a synonym of "reach", and the current dependency lists its subject */
-				if (!isBecomeSubjectNoun && d.contains("nsubj") && isSynonymOf("reach", lemma1))
+				/* The following checks if the sentence contains the predicate "become", which takes either a noun or a pronoun 
+				argument as its subject. 
+				If the subject is a noun, it is assumed to be a piece name and stored in previousPieceName.
+				If the subject is a pronoun, we call determineReferent() to determine what noun the pronoun refers to. If this fails (as it
+				often does, because CoreNLP), we search for the predicate "reach" or any synonym of it in the sentence,
+				and see what its subject is. This solution is not perfect, but a sufficient backup. */
+				if ((d.contains("nsubj")) && lemma1.equals("become") && !lemma2.equals(name))
 				{
-					//if so, we now check if the subject of reach is a noun; if so, it is probably the type of piece we want to parse.
 					if (pos2.charAt(0) == 'N')
 						previousPieceName = lemma2;
-					/* if not, the subject of reach may be a number, as in the following construction: 
-					"When one of your checkers reaches the opposite side of the board," etc. 
-					If so, we have to store the subject's index, so we can find in another dependency what noun
-					it modifies (as this noun is probably the type of piece we want to parse). */
-					else if (pos2.equals("CD"))
+					else if (pos2.equals("PRP"))
 					{
-						isReachSubjectNumber = true; 
-						numberIndex = index2;
+						String referent = determineReferent(i,index2);
+						if (!referent.equals(""))
+							previousPieceName = referent;
+						else if (subjectOfReach != null)
+							previousPieceName = subjectOfReach;
 					}
 				}
-				/* if the subject of "reach" is a number, we now have to determine what noun that number modifies.
-				*/
-				if (!isBecomeSubjectNoun && isReachSubjectNumber && d.contains("nmod") && index1 == numberIndex)
+				/* The following checks if the sentence contains the predicate "reach"; if so, if its subject is a noun,
+				it is stored in subjectOfReach. previousPieceName is set to this when the subject of become is
+				a pronoun and no other referent can be determined using determineReferent() */
+				if (d.contains("nsubj") && isSynonymOf("reach", lemma1))
 				{
 					if (pos2.charAt(0) == 'N')
-						previousPieceName = lemma2;
+						subjectOfReach = lemma2;
 				}
 			}
 
-			if (isBecomeObjectName && 
-				(isBecomeSubjectNoun || (isBecomeSubjectPronoun && previousPieceName != null)) 
-				&& (indexOfBecomeSubj == indexOfBecomeObj))
+			if (isObjectName && previousPieceName != null)
 			{
 				System.out.print("New previous piece found: " + previousPieceName + " in sentence " + i); //debugging
 				System.out.println(" (transition type: " + name + ")"); //debugging

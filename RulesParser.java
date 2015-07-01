@@ -111,7 +111,7 @@ public class RulesParser
 
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
 
-		System.out.println(determineReferent(23, 28)); //debugging
+		//System.out.println(determineReferent(23, 28)); //debugging
 
 		for (Piece p: pieceTypes)
 		{
@@ -811,11 +811,27 @@ public class RulesParser
 					if (mention.headIndex == wordIndex) // (we test this by comparing their indices in the sentence)
 					{
 						/*then we get the "representative mention" phrase - that is, what CoreNLP thinks is the
-						R-expression that refers to the referent, as opposed to an anaphor - and return its head word */
+						R-expression that refers to the referent, as opposed to an anaphor - and return the lemma of its head word */
 						CorefChain.CorefMention referentMention = entry.getValue().getRepresentativeMention();
-						CoreLabel referentWord = sentences.get(referentMention.sentNum - 1).get(
-							CoreAnnotations.TokensAnnotation.class).get(referentMention.headIndex - 1);
-						return referentWord.get(CoreAnnotations.TextAnnotation.class);
+						//if the head word of the representative mention phrase is a noun, return it
+						if (partsOfSpeech[referentMention.sentNum-1][referentMention.headIndex-1].charAt(0) == 'N')
+							return lemmas[referentMention.sentNum-1][referentMention.headIndex-1];
+
+						//if it's not, go sequentially through until a noun is found
+						else
+						{
+							List<CoreLabel> referentTokens = sentences.get(referentMention.sentNum - 1).get(
+								CoreAnnotations.TokensAnnotation.class);
+							// iterate over the entire "representative mention" phrase by iterating from indices startIndex-1 to endIndex-1
+							for (int i = referentMention.startIndex - 1; i < referentMention.endIndex - 1; i++)
+							{
+								//TODO: the implementation is great but the logic's not - 
+								// maybe something better than just returning the first noun in the phrase?
+								if (partsOfSpeech[referentMention.sentNum-1][i].charAt(0) == 'N')
+									return lemmas[referentMention.sentNum-1][i];
+							}
+						}
+
 					}
 				}
 			}

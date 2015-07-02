@@ -8,14 +8,15 @@ public class Piece
 	/*in the case that this type of piece starts out as another type of piece in game play 
 	(eg. a king starts out as a checker), this field stores a reference to the initial type of piece.
 	if this field is null, this is the default type of piece. */
-	private ArrayList<Integer> motionSentences; // indices of the sentences that potentially describe the motion of this piece
+	private ArrayList<Integer> transitionSentences; //indices of the sentences that describe when this piece type becomes another piece type
+
 
 	public Piece(String name)
 	{
 		this.name = name;
 		this.previousType = null;
 		motionTypes = new ArrayList<Direction>(1);
-		motionSentences = new ArrayList<Integer>(1);
+		transitionSentences = new ArrayList<Integer>(1);
 	}
 
 	public Piece(String name, Piece previousType)
@@ -23,6 +24,7 @@ public class Piece
 		this.name = name;
 		this.previousType = previousType;
 		motionTypes = new ArrayList<Direction>(1);
+		transitionSentences = new ArrayList<Integer>(1);
 	}
 
 	public String getName()
@@ -43,14 +45,18 @@ public class Piece
 		}
 	}
 
-	public void setMotionSentences(ArrayList<Integer> motionSentences)
+	public void addTransitionSentence(Integer transitionSentence)
 	{
-		this.motionSentences = motionSentences;
+		transitionSentences.add(transitionSentence);
 	}
 
-	public ArrayList<Integer> getMotionSentences()
+
+	/**
+	Determines whether a given sentence index is one of the transition sentences indices stored in transitionSentences.
+	*/
+	public boolean isTransitionSentence(Integer index)
 	{
-		return motionSentences;
+		return transitionSentences.contains(index);
 	}
 
 	/**

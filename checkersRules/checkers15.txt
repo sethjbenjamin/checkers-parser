@@ -1,6 +1,6 @@
-Checkers
+Checkers.
 
-Start position and game object
+Start position and game object.
 
 Checkers is played on a standard 64 square chess board. The whole game is performed on dark squares only and each player starts to play with twelve pieces - pawns, located in three rows on the player's side.
 
@@ -9,7 +9,7 @@ Checkers is played on a standard 64 square chess board. The whole game is perfor
 The object of this game is to capture all opponent's pieces or reach a position where your opponent cannot make a legal move.
 
 
-Movement of pieces
+Movement of pieces.
 
 Pawns can move only one space diagonally forward, they cannot move backward. The following picture shows an example of white pawn move.
 
@@ -20,7 +20,7 @@ If a pawn reaches the opposite side of the board (the last row), it turns to a k
 
 
 
-How to capture opponent's pieces
+How to capture opponent's pieces.
 
 If a pawn stands next to an opponent's piece (forward direction) and the next space beyond this piece is empty, then the player must capture the opponent's piece by jumping over it and removes it from the board. The captured piece will appear under (or over, depending on the board orientation) the board in Captured pieces field to inform the players about the game status.
 
@@ -33,7 +33,7 @@ The same rule applies on a king with the only difference - kings can capture an 
 
 
 
-Other important rules
+Other important rules.
 
 The player can jump over opponent's pieces only, not over his/her own ones.
 Jumping is mandatory. BrainKing.com will not allow you to make a "normal" move if you can capture one or more opponent's pieces in the current position.

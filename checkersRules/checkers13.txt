@@ -1,29 +1,29 @@
-The board and the beginning
+The board and the beginning.
 The checkers board is placed with a dark field in the lower left corner. Yourturnmyturn.com takes care that it is always placed like that. The player playing the dark men begins the board game. 
 
 
-Moving the pieces
+Moving the pieces.
 You can move your men each turn diagonally forward, which can either be diagonally to the left or diagonally to the right, as long as you don't move your men outside the board. The place where you move your man to must also be empty. With checkers only the dark squares are used. This moving of the pieces is done as long as no capturing is possible.
 
 
-Capturing
+Capturing.
 You can capture when one of your opponent's men is standing next to you (diagonally) and the square behind the opponent's man is empty. Capturing is compulsory. At yourturnmyturn.com this is forced, so if you think you are not able to move this is probably because you have to capture. Capturing is just like moving only possible in the forward direction.
 
 
 When you can choose between capturing in more than one way the choice is free. It is not as in international draughts that you have to capture the highest possible amount of men. A king has the same value as any other man and there is no rule that capturing with a king goes before capturing with a man. A capture has to be finished before the move is over. So if you capture one of your opponent's man and you can capture another piece from the field where you landed you have to capture the next man too, until you cannot capture any more pieces.
 
 
-Making a king
+Making a king.
 A man becomes a king when it reaches the top line of the board, either by a move or by a capture.
 
 
 A king can move and capture forward and backward. The main difference here with international draughts is that you can still only move 1 field on every move. When capturing the king also has to be right next to the opponent's man or king and after the capture the king stands at the square immediately behind the last captured piece.
 
 
-End of the board game
+End of the board game.
 You have lost once you have no men left or if you can not make a legal move anymore because all your men are blocked by those of your opponent. You can also lose by resigning the board game, for instance when you are so far behind that playing further is useless.
 
-Draw rules
+Draw rules.
 Some games end in a draw, than both players cannot win anymore unless the opponent makes a mayor mistake, but it is not allowed to wait for that by playing on endlessly. At yourturnmyturn.com it's a draw if:
 Both players agree.
 After 25 moves in which no man is captured and/or no man is made king.

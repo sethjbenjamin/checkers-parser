@@ -1,11 +1,11 @@
-Rules of Checkers
+Rules of Checkers.
 
-Aim of the game
+Aim of the game.
 The checkers game consists of 24 pieces divided into 12 white-colored and 12 black-colored pieces and a board of 64 squares (8x8) alternately colored white and black.
 
 The purpose of the game is the block of all the opponent’s pieces, so that it is not possible for them to move.
 
-How to play checkers
+How to play checkers.
 Each player commands the pieces of a certain color located at the start of each side of the board. The white pieces start the game.
 
 The moves are made alternately, one per player, in a diagonal direction, by only one square and in forward direction, that is, towards the opponent’s area.
@@ -14,7 +14,7 @@ If a player manages to take one of his/her pieces to the opposite side of the bo
 
 The king is also moved in a diagonal direction, but it can be forwards and backwards. According to the table options, the king can advance one square as the pieces do or cover any numbers of squares if they are free. It can never jump over its own pieces or two pieces in a row.
 
-Capture the opponent’s pieces
+Capture the opponent’s pieces.
 One piece can capture another one if it can jump over it, but always in the attack direction and in diagonal, being placed in the square right back that one.
 
 Besides, the kings can capture in any directions. If they can move more than one square (see the table options), they can capture any pieces that are on the same diagonal whenever the previous rules are satisfied.

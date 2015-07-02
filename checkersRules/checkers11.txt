@@ -1,4 +1,4 @@
-Setup and Object of Checkers
+Setup and Object of Checkers.
 
 
 
@@ -6,7 +6,7 @@ Checkers is played on a standard 64 square board. Only the 32 dark colored squar
 
 The object of the game is to capture all of your opponent’s checkers or position your pieces so that your opponent has no available moves. 
 
-Movement
+Movement.
 
 
 
@@ -25,12 +25,12 @@ After making one jump, your checker might have another jump available from its n
 
 If, at the start of a turn, more than one of your checkers has a jump available, then you may decide which one you will move. But once you have chosen one, it must take all the jumps that it can. 
 
-You Must Jump if Possible
+You Must Jump if Possible.
 If a jump is available for one of your pieces, you must make that jump. If more jumps are available with that same piece, you must continue to jump with it until it can jump no more. To make the second and third jump with a piece, you do not need to click that piece again. Just click the next space to which it will jump. 
 
 If more than one of your pieces has a jump available at the start of your turn, you can choose which piece you will move. But then you must make all the jumps available for that piece. 
 
-Crowning
+Crowning.
 When one of your checkers reaches the opposite side of the board, it is crowned and becomes a King. Your turn ends there. 
 
 

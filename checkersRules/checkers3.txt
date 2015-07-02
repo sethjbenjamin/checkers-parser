@@ -5,7 +5,7 @@ Official tournament checker boards are 16 inches wide with alternating green and
 
 The board should be placed so that there is a light corner square nearest each player’s right-hand side and a dark corner square nearest each player’s left-hand side.
 
-Pieces	
+Pieces.	
 Each player starts out with 12 playing pieces. One player has light colored pieces (called “white”) and the other has dark pieces (called “black” although the pieces may actually be red). Each player starts with their pieces laid out on the 12 dark squares nearest him or her.
 
 Official tournament checker pieces are one and one quarter to one and a half inches in diameter.

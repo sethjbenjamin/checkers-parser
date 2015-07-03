@@ -309,20 +309,16 @@ public class RulesParser
 				if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
 					isNameSubject = true;
 
-				/* The following checks if the sentence contains a synonym of the predicate "become" with either name or a pronoun 
-				that refers to name as its subject. */
-				/*if (d.contains("nsubj") && isSynonymOf("become", lemma1))
+				/* The following checks if the sentence contains the predicate "become", which takes a noun argument
+				as either its direct object or its open clausal complement. If so, the noun argument is stored in transitionPieceName. */
+				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
 				{
-					if (lemma2.equals(name) || (pos2.equals("PRP") && determineAntecedent(i, index2).equals(name)))
-						isNameSubject = true;
-				}*/
-
-				/* The following checks if the sentence contains a synonym of the predicate "become", which takes a noun argument
-				as either its direct object or its open clausal complement, or a preposition phrase with either "to" or "into" as
-				its head. If so, the noun argument is stored in transitionPieceName. */
-				if (isSynonymOf("become", lemma1) && 
-					(pos2.charAt(0) == 'N') && 
-					(d.contains("dobj") || d.contains("xcomp") || d.contains("nmod:into") || d.contains("nmod:to")))
+					isTransitionSentence = true; //if so, it is a transition sentence
+					transitionPieceName = lemma2;
+				}
+				/* The following checks if the sentence contains the predicate "turn", which takes a prepositional phrase 
+				with either "to" or "into" as its head. If so, the noun argument is stored in transitionPieceName. */
+				if (lemma1.equals("turn") && (pos2.charAt(0) == 'N') && (d.contains("nmod:into") || d.contains("nmod:to")))
 				{
 					isTransitionSentence = true; //if so, it is a transition sentence
 					transitionPieceName = lemma2;
@@ -357,11 +353,8 @@ public class RulesParser
 					if (p.equals(transitionPiece))
 					{
 						isAlreadyAdded = true;
-						if (p.getPreviousType() == null || !p.getPreviousType().equals(currentPiece)) //TODO: is this necessary
-						{
+						if (p.getPreviousType() == null || !p.getPreviousType().equals(currentPiece))
 							p.setPreviousType(currentPiece); 
-							System.out.println("Does this even happen ever? ");
-						}
 						break; //don't need to check the rest
 					}
 				}
@@ -482,7 +475,7 @@ public class RulesParser
 		A sentence is analyzed to determine if it has the following properties. If it has all of them, it is considered
 		a motion sentence for p.
 		- either the name of the piece (henceforth simply referred to as "name") or a pronoun that refers to name is an 
-		  argument of a predicate that denotes one of the allowed types of motion in the game 
+		  argument (either subject or direct object) of a predicate that denotes one of the allowed types of motion in the game 
 		  (the truth value of this property is stored by the boolean variable isMoveArgument)
 		- the sentence is not a transition sentence for p (that is, a sentence that describes how p can turn into a different
 		  type of piece) (this is determined by calling p.isTransitionSentence(i) where i is the index of the sentence)
@@ -554,8 +547,8 @@ public class RulesParser
 				}
 
 				/* The following if statement checks if the current sentence contains any of the move types previously parsed
-				by the system as a predicate, and if so, if it either takes name or a pronoun as an argument. */
-				if (moveTypes.contains(lemma1))
+				by the system as a predicate, and if so, if it either takes name or a pronoun as a subject or direct object. */
+				if (moveTypes.contains(lemma1) && (d.contains("dobj") || d.contains("nsubj")))
 				{
 					Piece previousType = p.getPreviousType();
 					//if the argument of the motion predicate is name, this is probably a motion sentence

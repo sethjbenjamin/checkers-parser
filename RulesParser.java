@@ -112,14 +112,14 @@ public class RulesParser
 		ArrayList<Piece> pieceTypes = parsePieceTypes();
 
 		for (Piece p: pieceTypes)
-		{
-
-			// TODO: this is kind of weird - parseMotion() could just call getMotionSentences(), 
-			// and also could handle all the addMotionTypes() business 
+		{ 
 			ArrayList<Integer> indices = determineMotionSentences(p);
-			//ArrayList<Direction> motionTypes = parseMotion(p, p.getMotionSentences());
 			ArrayList<Direction> motionTypes = parseMotion(p, indices);
 			p.addMotionTypes(motionTypes);
+		}
+
+		for (Piece p: pieceTypes)
+		{
 			if (!p.isDefault())
 			{
 				Piece previous = p.getPreviousType();
@@ -309,21 +309,25 @@ public class RulesParser
 				/*if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
 					isNameSubject = true;*/
 
-				/* The following checks if the sentence contains the predicate "become" with either name or a pronoun 
+				/* The following checks if the sentence contains a synonym of the predicate "become" with either name or a pronoun 
 				that refers to name as its subject. */
-				if (d.contains("nsubj") && lemma1.equals("become"))
+				if (d.contains("nsubj") && isSynonymOf("become", lemma1))
 				{
 					if (lemma2.equals(name) || (pos2.equals("PRP") && determineAntecedent(i, index2).equals(name)))
 						isNameSubject = true;
 				}
 
-				/* The following checks if the sentence contains the predicate "become", which takes a noun argument
-				as either its direct object or its open clausal complement. */
-				if (lemma1.equals("become") && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
+				/* The following checks if the sentence contains a synonym of the predicate "become", which takes a noun argument
+				as either its direct object or its open clausal complement, or a preposition phrase with either "to" or "into" as
+				its head. If so, the noun argument is stored in transitionPieceName. */
+				if (isSynonymOf("become", lemma1) && 
+					(pos2.charAt(0) == 'N') && 
+					(d.contains("dobj") || d.contains("xcomp") || d.contains("nmod:into") || d.contains("nmod:to")))
 				{
 					isTransitionSentence = true; //if so, it is a transition sentence
 					transitionPieceName = lemma2;
 				}
+
 				//The following checks if the sentence is in the passive voice and has "make" as its predicate.
 				if (d.contains("nsubjpass") && lemma1.equals("make"))
 					isPassiveTransition = true; 
@@ -339,7 +343,6 @@ public class RulesParser
 					transitionPieceName = lemma2;
 				}
 			}
-
 			if (isNameSubject && isTransitionSentence)
 			{
 				System.out.print("New transition piece found: " + transitionPieceName + " in sentence " + i); //debugging
@@ -542,7 +545,7 @@ public class RulesParser
 				If this is the case, we have to take the modified noun in the compound - in our above example, "pieces" - and store it in
 				compoundedNoun; we do this as we will later have to check if compoundedNoun is an argument of a motion verb. (If it is,
 				we have to treat this the same as if name itself were an argument.) */
-				if (d.contains("compound(") && lemma2.toLowerCase().contains(name))
+				if (d.contains("compound(") && lemma2.equals(name))
 				{
 					isNameCompounded = true;
 					compoundedNoun = lemma1;
@@ -564,10 +567,11 @@ public class RulesParser
 					else if (pos2.equals("PRP"))
 					{
 						String antecedent = determineAntecedent(i, index2); //antecedent of the pronoun
-						int antecedentIndex = antecedentSentence(i, index2); // index of sentence containing the antecedent
+
 						/* We consider this a motion sentence if the pronoun's antecedent is name, and if the
-						sentence contaning the antecedent is not a transition statement of p. */
-						if (antecedent.equals(name) && !p.isTransitionSentence(antecedentIndex))
+						sentence contaning the antecedent (assumed to be either the current
+						sentence or the previous one) is not a transition statement of p. */
+						if (antecedent.equals(name) && !p.isTransitionSentence(i) && !p.isTransitionSentence(i-1))
 						{
 							isMovePredicate = true;
 							index = i;
@@ -578,13 +582,17 @@ public class RulesParser
 						the antecedent of "it" is grammatically "checker"; however, this sentence describes the motion of
 						kings, not checkers (that is, it describes the motion of checkers after they become kings.)
 						Thus, when the antecedent of a pronoun refers not to p (the piece we are currently parsing the motion of),
-						but instead to p's previous type, we have to check if the sentence containing the antecedent is a 
-						transition sentence describing how previousType becomes p; if it is, we must still consider the 
-						current sentence a motion sentence for p. */
-						else if (previousType != null && antecedent.equals(previousType.getName()) && previousType.isTransitionSentence(antecedentIndex))
+						but instead to p's previous type, we have to check if the sentence containing the antecedent (assumed to be
+						either the current sentence or the previous one) is a transition sentence describing how previousType becomes p; 
+						if it is, we must still consider the current sentence a motion sentence for p. */
+						//TODO: this will cause problems if there are multiple transition types b/c 
+						//isTransitionSentence doesn't know what transition piece type goes with each sentence
+						else if (previousType != null && 
+							antecedent.equals(previousType.getName()) && 
+							(previousType.isTransitionSentence(i) || previousType.isTransitionSentence(i-1)))
 						{
 							isMovePredicate = true;
-							index = i;
+							index = i; 
 						}
 					}
 					/* Same as above: in case of name being a modifier in a noun compound (that is, if isNameCompounded == true), 
@@ -780,41 +788,6 @@ public class RulesParser
 			}
 		}
 		return ""; //dummy value
-	}
-
-	/**
-	Returns the sentence containing an anaphor's antecedent. 
-	Returns -1 if CoreNLP is unable to determine an antecedent for the word.
-	*/
-	public int antecedentSentence(int sentenceIndex, int wordIndex)
-	{
-		//sentence indices start at 0 for field "sentences" / for parameter sentenceIndex, but start at 1 for the corefchain
-		// word indices start at 1
-		//iterate over all CorefChains
-		for (Map.Entry<Integer, CorefChain> entry: corefChains.entrySet())
-		{
-			//iterate over all CorefMentions in current CorefChain - all the phrases used to refer to a single referent
-			for (CorefChain.CorefMention mention: entry.getValue().getMentionsInTextualOrder())
-			{
-				//We're only interested if mention (the full NP used to denote a referent) occurs in the sentence we want to look at
-				//subtract 1 because the corefchain sentence indices start at 1 and ours start at 0
-				if (mention.sentNum - 1 == sentenceIndex)
-				{
-					//tokens is a list of the words in the current sentence
-					List<CoreLabel> tokens = sentences.get(mention.sentNum - 1).get(CoreAnnotations.TokensAnnotation.class);
-					//if the head of the referring NP is the anaphor we are trying to determine the antecedent of,
-					if (mention.headIndex == wordIndex) // (we test this by comparing their indices in the sentence)
-					{
-						/*then we get the "representative mention" phrase - that is, what CoreNLP thinks is the
-						R-expression that refers to the antecedent, as opposed to an anaphor - and return the lemma of its head word */
-						CorefChain.CorefMention antecedentMention = entry.getValue().getRepresentativeMention();
-						return antecedentMention.sentNum-1;
-					}
-				}
-			}
-		}
-		return -1; //dummy value
-
 	}
 
 	/**

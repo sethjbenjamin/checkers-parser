@@ -349,7 +349,7 @@ public class RulesParser
 				System.out.println(" (previous type: " + name + ")"); //debugging
 				Piece transitionPiece = new Piece(transitionPieceName, currentPiece); 
 				// we have to add the index of the transition sentence to the transitionSentences field of currentPiece
-				currentPiece.addTransitionSentence(new Integer(i), transitionPieceName);
+				currentPiece.addTransitionSentence(i, transitionPieceName);
 				// now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece

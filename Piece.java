@@ -48,16 +48,16 @@ public class Piece
 		}
 	}
 
-	public void addTransitionSentence(Integer index, String pieceName)
+	public void addTransitionSentence(int index, String pieceName)
 	{
-		transitionSentences.put(index, pieceName);
+		transitionSentences.put(new Integer(index), pieceName);
 	}
 
 
 	/**
 	Determines whether a given sentence index is one of the transition sentences indices stored in transitionSentences.
 	*/
-	public boolean isTransitionSentence(Integer index)
+	public boolean isTransitionSentence(int index)
 	{
 		return transitionSentences.containsKey(index);
 	}
@@ -66,7 +66,7 @@ public class Piece
 	Determines whether a given sentence index is one of the transition sentences indices stored in transitionSentences,
 	and if so whether it specifically is the transition sentence describing how this piece becomes pieceName.
 	*/
-	public boolean isTransitionSentence(Integer index, String pieceName)
+	public boolean isTransitionSentence(int index, String pieceName)
 	{
 		if (transitionSentences.containsKey(index))
 			return transitionSentences.get(index).equals(pieceName);

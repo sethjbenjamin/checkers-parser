@@ -1,14 +1,17 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class Piece
 {
 	private String name;
 	private ArrayList<Direction> motionTypes;
 	private Piece previousType; 
-	/*in the case that this type of piece starts out as another type of piece in game play 
+	/* in the case that this type of piece starts out as another type of piece in game play 
 	(eg. a king starts out as a checker), this field stores a reference to the initial type of piece.
 	if this field is null, this is the default type of piece. */
-	private ArrayList<Integer> transitionSentences; //indices of the sentences that describe when this piece type becomes another piece type
+	private HashMap<Integer,String> transitionSentences; 
+	/* keys are indices of the sentences that describe when this piece type becomes another piece type.
+	the value associated with a certain key is the name of the piece this piece becomes in that sentence */
 
 
 	public Piece(String name)
@@ -16,7 +19,7 @@ public class Piece
 		this.name = name;
 		this.previousType = null;
 		motionTypes = new ArrayList<Direction>(1);
-		transitionSentences = new ArrayList<Integer>(1);
+		transitionSentences = new HashMap<Integer, String>(1);
 	}
 
 	public Piece(String name, Piece previousType)
@@ -24,7 +27,7 @@ public class Piece
 		this.name = name;
 		this.previousType = previousType;
 		motionTypes = new ArrayList<Direction>(1);
-		transitionSentences = new ArrayList<Integer>(1);
+		transitionSentences = new HashMap<Integer, String>(1);
 	}
 
 	public String getName()
@@ -45,9 +48,9 @@ public class Piece
 		}
 	}
 
-	public void addTransitionSentence(Integer transitionSentence)
+	public void addTransitionSentence(Integer index, String pieceName)
 	{
-		transitionSentences.add(transitionSentence);
+		transitionSentences.put(index, pieceName);
 	}
 
 
@@ -56,7 +59,19 @@ public class Piece
 	*/
 	public boolean isTransitionSentence(Integer index)
 	{
-		return transitionSentences.contains(index);
+		return transitionSentences.containsKey(index);
+	}
+
+	/**
+	Determines whether a given sentence index is one of the transition sentences indices stored in transitionSentences,
+	and if so whether it specifically is the transition sentence describing how this piece becomes pieceName.
+	*/
+	public boolean isTransitionSentence(Integer index, String pieceName)
+	{
+		if (transitionSentences.containsKey(index))
+			return transitionSentences.get(index).equals(pieceName);
+		else
+			return false;
 	}
 
 	/**

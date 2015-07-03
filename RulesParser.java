@@ -304,18 +304,18 @@ public class RulesParser
 				String lemma2 = lemmas[i][index2-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				//The following checks if the sentence has any clause with name as its subject.
-				//Normally one should only check lemma2; checking lemma1 as well can help compensate for coreNLP bugs.
-				/*if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
-					isNameSubject = true;*/
+				/*The following checks if the sentence has any clause with name as its subject.
+				Normally one should only check lemma2; checking lemma1 as well can help compensate for coreNLP bugs. */
+				if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
+					isNameSubject = true;
 
 				/* The following checks if the sentence contains a synonym of the predicate "become" with either name or a pronoun 
 				that refers to name as its subject. */
-				if (d.contains("nsubj") && isSynonymOf("become", lemma1))
+				/*if (d.contains("nsubj") && isSynonymOf("become", lemma1))
 				{
 					if (lemma2.equals(name) || (pos2.equals("PRP") && determineAntecedent(i, index2).equals(name)))
 						isNameSubject = true;
-				}
+				}*/
 
 				/* The following checks if the sentence contains a synonym of the predicate "become", which takes a noun argument
 				as either its direct object or its open clausal complement, or a preposition phrase with either "to" or "into" as
@@ -349,7 +349,7 @@ public class RulesParser
 				System.out.println(" (previous type: " + name + ")"); //debugging
 				Piece transitionPiece = new Piece(transitionPieceName, currentPiece); 
 				// we have to add the index of the transition sentence to the transitionSentences field of currentPiece
-				currentPiece.addTransitionSentence(i);
+				currentPiece.addTransitionSentence(new Integer(i), transitionPieceName);
 				// now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
@@ -448,14 +448,15 @@ public class RulesParser
 					if (p.equals(previousPiece))
 					{
 						isAlreadyAdded = true;
-						p.addTransitionSentence(i);
+						//have to add this sentence as a transition sentence for the new previous type
+						p.addTransitionSentence(i, name);
 						break; //don't need to check the rest
 					}
 				}
 				if (!isAlreadyAdded) // if the piece hasn't already been added,
 				{
 					pieceTypes.add(previousPiece); //add it
-					previousPiece.addTransitionSentence(i); //add the parsed transition sentence to its list of transition sentences
+					previousPiece.addTransitionSentence(i, name); //add the parsed transition sentence to its list of transition sentences
 					parsePreviousTypes(previousPiece, pieceTypes);
 				}
 
@@ -585,11 +586,9 @@ public class RulesParser
 						but instead to p's previous type, we have to check if the sentence containing the antecedent (assumed to be
 						either the current sentence or the previous one) is a transition sentence describing how previousType becomes p; 
 						if it is, we must still consider the current sentence a motion sentence for p. */
-						//TODO: this will cause problems if there are multiple transition types b/c 
-						//isTransitionSentence doesn't know what transition piece type goes with each sentence
 						else if (previousType != null && 
 							antecedent.equals(previousType.getName()) && 
-							(previousType.isTransitionSentence(i) || previousType.isTransitionSentence(i-1)))
+							(previousType.isTransitionSentence(i, name) || previousType.isTransitionSentence(i-1, name)))
 						{
 							isMovePredicate = true;
 							index = i; 

@@ -270,10 +270,10 @@ public class RulesParser
 		}
 
 		System.out.println("First piece type parsed: " + mostFrequentArgument); //debugging
-		Piece defaultPiece = new Piece(mostFrequentArgument);
-		pieceTypes.add(defaultPiece);
-		parseTransitionTypes(defaultPiece, pieceTypes);
-		parsePreviousTypes(defaultPiece, pieceTypes);
+		Piece firstPiece = new Piece(mostFrequentArgument);
+		pieceTypes.add(firstPiece);
+		parseTransitionTypes(firstPiece, pieceTypes);
+		parsePreviousTypes(firstPiece, pieceTypes);
 		return pieceTypes;
 		
 	}
@@ -393,18 +393,41 @@ public class RulesParser
 				String lemma2 = lemmas[i][index2-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				/* The following checks if the sentence contains the predicate "become", specifically taking name
+				/* The following checks if the sentence contains either of the predicates "become" or "make", specifically taking name
 				as either its direct object or its open clausal complement.*/
-				if ((d.contains("dobj") || d.contains("xcomp")) && lemma1.equals("become") && lemma2.equals(name))
+				if ((d.contains("dobj") || d.contains("xcomp")) && (lemma1.equals("become") || lemma1.equals("make")) && lemma2.equals(name))
+					isObjectName = true;
+				/* The following checks if the sentence contains the predicate "turn", specifically taking a prepositional
+				phrase headed by either "to" or "into" which takes name as its object.*/
+				else if ((d.contains("nmod:into") || d.contains("nmod:to")) && lemma1.equals("turn") && lemma2.equals(name))
 					isObjectName = true;
 
-				/* The following checks if the sentence contains the predicate "become", which takes either a noun or a pronoun 
-				argument as its subject. 
+				/* The following checks if the sentence contains either of the predicates "become" or "turn", specifically 
+				taking either a noun or a pronoun argument as its subject. 
 				If the subject is a noun, it is assumed to be a piece name and stored in previousPieceName.
-				If the subject is a pronoun, we call determineAntecedent() to determine what noun the pronoun refers to. If this fails (as it
-				often does, because CoreNLP), we search for the predicate "reach" or any synonym of it in the sentence,
-				and see what its subject is. This solution is not perfect, but a sufficient backup. */
-				if ((d.contains("nsubj")) && lemma1.equals("become") && !lemma2.equals(name))
+				If the subject is a pronoun, we call determineAntecedent() to determine what noun the pronoun refers to. 
+				If this fails (as it often does, because CoreNLP), we search for the predicate "reach" or any synonym of it 
+				in the sentence, and see what its subject is. This solution is not perfect, but a sufficient backup. */
+				if ((d.contains("nsubj")) && (lemma1.equals("become") || lemma1.equals("turn")) && !lemma2.equals(name))
+				{
+					if (pos2.charAt(0) == 'N')
+						previousPieceName = lemma2;
+					else if (pos2.equals("PRP"))
+					{
+						String antecedent = determineAntecedent(i,index2);
+						if (!antecedent.equals(""))
+							previousPieceName = antecedent;
+						else if (subjectOfReach != null)
+							previousPieceName = subjectOfReach;
+					}
+				}
+				/* The following checks if the sentence contains the predicate "make", necessarily in the passive voice, specifically 
+				taking either a noun or a pronoun argument as its subject. 
+				If the subject is a noun, it is assumed to be a piece name and stored in previousPieceName.
+				If the subject is a pronoun, we call determineAntecedent() to determine what noun the pronoun refers to. 
+				If this fails (as it often does, because CoreNLP), we search for the predicate "reach" or any synonym of it 
+				in the sentence, and see what its subject is. This solution is not perfect, but a sufficient backup. */
+				else if (d.contains("nsubjpass") && lemma1.equals("make") && !lemma2.equals(name))
 				{
 					if (pos2.charAt(0) == 'N')
 						previousPieceName = lemma2;

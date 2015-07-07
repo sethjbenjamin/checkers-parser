@@ -277,12 +277,15 @@ public class RulesParser
 		Piece firstPiece = new Piece(mostFrequentArgument);
 		pieceTypes.add(firstPiece);
 
+		parseEquivalentTypes(firstPiece);
 		parseTransitionTypes(firstPiece);
 		parsePreviousTypes(firstPiece);
 	}
 
-	public void parseTransitionTypes(Piece currentPiece)
+	public void parseEquivalentTypes(Piece currentPiece)
 	{
+		String name = currentPiece.getName();
+
 		for (int i = 0; i < sentences.size(); i++)
 		{
 			CoreMap sentence = sentences.get(i);
@@ -291,7 +294,71 @@ public class RulesParser
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
-			String name = currentPiece.getName();
+			boolean clauseModifiesName = false;
+			boolean clauseModifiesOtherNoun = false;
+			boolean clauseHasEquivalentType = false;
+			//boolean clauseContainsOtherNoun = false;
+			int aclPredicate = -1;
+			String equivalentType = null;
+
+			for (int j = 1; j < dependencies.length; j++)
+			{
+				String d = dependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas[i][index1-1];
+				String lemma2 = lemmas[i][index2-1];
+				String pos1 = partsOfSpeech[i][index1-1];
+				String pos2 = partsOfSpeech[i][index2-1];
+
+				if (d.contains("appos(") && lemma1.equals(name) && pos2.charAt(0) == 'N')
+				{
+					currentPiece.addEquivalentType(lemma2);
+					System.out.println("Equivalent type parsed for " + name + ": " + lemma2);
+				}
+				if (d.contains("acl(") && pos1.charAt(0) == 'N' && (lemma2.equals("know") || lemma2.equals("call")))
+				{
+					if (lemma1.equals(name))
+						clauseModifiesName = true;
+					else
+					{
+						clauseModifiesOtherNoun = true;
+						equivalentType = lemma1;
+					}
+					aclPredicate = index2;
+				}
+				if (d.contains("nmod") || (d.contains("dobj")) && pos2.charAt(0) == 'N' && index1 == aclPredicate)
+				{
+					if (clauseModifiesOtherNoun && lemma2.equals(name))
+						clauseHasEquivalentType = true;
+					else if (clauseModifiesName)
+					{
+						clauseHasEquivalentType = true;
+						equivalentType = lemma2;
+					}
+				}
+			}
+
+			if (clauseHasEquivalentType)
+			{
+				currentPiece.addEquivalentType(equivalentType);
+				System.out.println("Equivalent type parsed for " + name + ": " + equivalentType);
+			}
+		}
+	}
+
+	public void parseTransitionTypes(Piece currentPiece)
+	{
+		String name = currentPiece.getName();
+
+		for (int i = 0; i < sentences.size(); i++)
+		{
+			CoreMap sentence = sentences.get(i);
+			//dependencies for current sentence as a String[], each entry containing a single dependency String
+			String[] dependencies = sentence.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+				SemanticGraph.OutputFormat.LIST).split("\n");
+
 			boolean isNameSubject = false;
 			boolean isTransitionSentence = false;
 			boolean isPassiveTransition = false; //used for a construction like "a checker is made a king"
@@ -330,15 +397,15 @@ public class RulesParser
 				//The following checks if the sentence is in the passive voice and has "make" as its predicate.
 				if (d.contains("nsubjpass") && lemma1.equals("make"))
 					isPassiveTransition = true; 
-				/*The following checks if the sentence contains the predicate "make", which takes a noun argument
+				/*The following checks if the sentence contains the predicate "make" in the passive voice, taking a noun argument
 				as either its direct object or its open clausal complement. */
-				if ((lemma1.equals("make")) && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")))
+				if ((lemma1.equals("make")) && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")) && isPassiveTransition)
 				{
-					/* Setting isTransitionSentence equal to isPassiveTransition (as opposed to simply setting it to true) ensures that 
-					isTransitionSentence is only set true when the sentence that is potentially a transition sentence is in the passive voice. 
+					/* Checking isPassiveTransition in the if statement ensures that isTransitionSentence is only set 
+					true when the sentence that is potentially a transition sentence is in the passive voice. 
 					This ensures that sentences like "the checker is made a king" are parsed as transition sentences, 
 					but sentences like "the checker makes a jump" are not. */
-					isTransitionSentence = isPassiveTransition;
+					isTransitionSentence = true;
 					transitionPieceName = lemma2;
 				}
 			}
@@ -372,6 +439,8 @@ public class RulesParser
 
 	public void parsePreviousTypes(Piece laterPiece)
 	{
+		String name = laterPiece.getName();
+
 		for (int i = 0; i < sentences.size(); i++)
 		{
 			CoreMap sentence = sentences.get(i);
@@ -380,7 +449,6 @@ public class RulesParser
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
-			String name = laterPiece.getName();
 			boolean isObjectName = false;
 
 			String previousPieceName = null; 
@@ -480,8 +548,6 @@ public class RulesParser
 			}
 		}
 	}
-
-
 
 
 	/**

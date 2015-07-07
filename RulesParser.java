@@ -604,15 +604,13 @@ public class RulesParser
 		/* This method determines if a given sentence describes the motion of the Piece p as follows.
 		A sentence is analyzed to determine if it has the following properties. If it has all of them, it is considered
 		a motion sentence for p.
-		- either the name of the piece (henceforth simply referred to as "name") or a pronoun that refers to name is an 
-		  argument (either subject or direct object) of a predicate that denotes one of the allowed types of motion in the game 
+		- either any of the names of the piece or a pronoun that refers to any of those names is an argument 
+		  (either subject or direct object) of a predicate that denotes one of the allowed types of motion in the game 
 		  (the truth value of this property is stored by the boolean variable isMoveArgument)
 		- the sentence is not a transition sentence for p (that is, a sentence that describes how p can turn into a different
 		  type of piece) (this is determined by calling p.isTransitionSentence(i) where i is the index of the sentence)
 
 		There are a few exceptions:
-		- if p is a default type whose name is not "piece", "piece" can substitute for name in the previous properties and the sentence
-		  will be considered a motion sentence.
 		- if the sentence contains a verb that describes motion in the game, with an anaphor as an argument, and the anaphor's antecedent
 		  refers not to p but instead to p.previousType, the sentence is considered a motion sentence if the sentence containing
 		  the anaphor's antecedent is a transition sentence for p.previousType. 
@@ -635,12 +633,12 @@ public class RulesParser
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
-			//boolean isNameArgument = false;
+			boolean isMovePredicate = false;
+			int index = -1;
+
 			boolean isNameCompounded = false;
 			String compoundedNoun = null;
 			int compoundedNounIndex = -1;
-			boolean isMovePredicate = false;
-			int index = -1;
 
 			//iterate over all dependencies of the current sentence
 			for (int j = 1; j < dependencies.length; j++)
@@ -653,14 +651,14 @@ public class RulesParser
 				String pos1 = partsOfSpeech[i][index1-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				/* The following if statement checks if name is a modifier in a noun compound. This matters because sometimes a noun compound,
-				of which the current name of the piece is the modifying noun, is used instead of just name itself, for example:
+				/* The following if statement checks if one of the names of p is a modifier in a noun compound. This matters because sometimes 
+				a noun compound, of which the current name of the piece is the modifying noun, is used instead of just name itself, for example:
 				"King pieces can move in both directions, forward and backward." uses the noun compound "king pieces" instead of just saying
 				"king". 
 				If this is the case, we have to take the modified noun in the compound - in our above example, "pieces" - and store it in
 				compoundedNoun; we do this as we will later have to check if compoundedNoun is an argument of a motion verb. (If it is,
-				we have to treat this the same as if name itself were an argument.) */
-				if (d.contains("compound(") && lemma2.equals(name))
+				we have to treat this the same as if the piece's name itself were an argument.) */
+				if (d.contains("compound(") && p.isAnyName(lemma2))
 				{
 					isNameCompounded = true;
 					compoundedNoun = lemma1;
@@ -672,8 +670,8 @@ public class RulesParser
 				if (moveTypes.contains(lemma1) && (d.contains("dobj") || d.contains("nsubj")))
 				{
 					Piece previousType = p.getPreviousType();
-					//if the argument of the motion predicate is name, this is probably a motion sentence
-					if (lemma2.equals(name))
+					//if the argument of the motion predicate is any of the names of p, this is probably a motion sentence
+					if (p.isAnyName(lemma2))
 					{
 						isMovePredicate = true;
 						index = i;
@@ -683,10 +681,10 @@ public class RulesParser
 					{
 						String antecedent = determineAntecedent(i, index2); //antecedent of the pronoun
 
-						/* We consider this a motion sentence if the pronoun's antecedent is name, and if the
-						sentence contaning the antecedent (assumed to be either the current
+						/* We consider this a motion sentence if the pronoun's antecedent is any of the names
+						of p, and if the sentence contaning the antecedent (assumed to be either the current
 						sentence or the previous one) is not a transition statement of p. */
-						if (antecedent.equals(name) && !p.isTransitionSentence(i) && !p.isTransitionSentence(i-1))
+						if (p.isAnyName(antecedent) && !p.isTransitionSentence(i) && !p.isTransitionSentence(i-1))
 						{
 							isMovePredicate = true;
 							index = i;
@@ -701,7 +699,7 @@ public class RulesParser
 						either the current sentence or the previous one) is a transition sentence describing how previousType becomes p; 
 						if it is, we must still consider the current sentence a motion sentence for p. */
 						else if (previousType != null && 
-							antecedent.equals(previousType.getName()) && 
+							previousType.isAnyName(antecedent) && 
 							(previousType.isTransitionSentence(i, name) || previousType.isTransitionSentence(i-1, name)))
 						{
 							isMovePredicate = true;
@@ -712,12 +710,6 @@ public class RulesParser
 					we have to check if the noun it modifies is an argument of a motion verb as well, as this is equivalent to name itself 
 					being one. */
 					else if (isNameCompounded && lemma2.equals(compoundedNoun) && index2 == compoundedNounIndex)
-					{
-						isMovePredicate = true;
-						index = i;
-					}
-					//TODO: make parseEquivalents and then remove this
-					else if (p.isDefault() && !name.equals("piece") && lemma2.equals("piece"))
 					{
 						isMovePredicate = true;
 						index = i;

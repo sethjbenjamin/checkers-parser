@@ -294,11 +294,10 @@ public class RulesParser
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
-			boolean clauseModifiesName = false;
-			boolean clauseModifiesOtherNoun = false;
-			boolean clauseHasEquivalentType = false;
-			//boolean clauseContainsOtherNoun = false;
-			int aclPredicate = -1;
+			boolean aclModifiesName = false;
+			boolean aclModifiesOtherNoun = false;
+			boolean aclHasEquivalentType = false;
+			int participle = -1;
 			String equivalentType = null;
 
 			for (int j = 1; j < dependencies.length; j++)
@@ -311,38 +310,62 @@ public class RulesParser
 				String pos1 = partsOfSpeech[i][index1-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
+				// The following checks for noun appositive phrases modifying name.
 				if (d.contains("appos(") && lemma1.equals(name) && pos2.charAt(0) == 'N')
 				{
-					currentPiece.addEquivalentType(lemma2);
-					System.out.println("Equivalent type parsed for " + name + ": " + lemma2);
+					/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
+					we don't want to simply add the same name as its own equivalent. */
+					if (!moveTypes.contains(lemma2) && !isSynonymOf("player", lemma2, 0) && !lemma2.equals(name))
+					{
+						currentPiece.addEquivalentType(lemma2);
+						System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma2);
+					}
 				}
+				/* The following checks for an adjectival clause modifying a noun, containing either 
+				of the past participles "known" or "called" as its head word. */
 				if (d.contains("acl(") && pos1.charAt(0) == 'N' && (lemma2.equals("know") || lemma2.equals("call")))
 				{
-					if (lemma1.equals(name))
-						clauseModifiesName = true;
-					else
+					if (lemma1.equals(name)) //if the adjectival clause modifies name,
 					{
-						clauseModifiesOtherNoun = true;
-						equivalentType = lemma1;
+						aclModifiesName = true;
+						participle = index2; //get the index of the past participle 
 					}
-					aclPredicate = index2;
-				}
-				if (d.contains("nmod") || (d.contains("dobj")) && pos2.charAt(0) == 'N' && index1 == aclPredicate)
-				{
-					if (clauseModifiesOtherNoun && lemma2.equals(name))
-						clauseHasEquivalentType = true;
-					else if (clauseModifiesName)
+					/* If the adjectival clause is NOT modifying name, it may be modifying a noun that is equivalent to name.
+					This is only possible if the noun being modified (lemma1) is not a move type, or a synonym of player (these
+					cannot be equivalent types). */
+					else if (!moveTypes.contains(lemma1) && !isSynonymOf("player", lemma1, 0))
 					{
-						clauseHasEquivalentType = true;
+						aclModifiesOtherNoun = true;
+						equivalentType = lemma1; //store the noun in equivalentType
+						participle = index2; //get the index of the past participle
+					}
+				}
+				/* The following if statement is intended to analyze the contents of the adjectival clause; we check whether
+				index1 == participle in order to verify that we are in fact looking at it. 
+				Otherwise, we check for either the past participle taking a noun argument as either a nominal modifier 
+				(in the case of "name is known as x") or a direct object (in the case of "name is called x"). */
+				if (d.contains("nmod") || (d.contains("dobj")) && pos2.charAt(0) == 'N' && index1 == participle)
+				{
+					/* If the adjectival clause is modifying a different noun, and its past participle takes name as its noun argument,
+					this is a statement denoting an equivalent type to name. 
+					(eg: name = man, and this sentence contains: "Single checkers, known as men, ..." -> equivalent type = checker) */
+					if (aclModifiesOtherNoun && lemma2.equals(name))
+						aclHasEquivalentType = true;
+					/* If the adjectival clause is modifying name, and its past participle takes a different noun argument that is not
+					a move type, name, or a synonym of player, this is a statement denoting an equivalent type to name.
+					(eg: name = man, and this sentence contains: "A man, also called a checker, ..." -> equivalent type = checker) */
+					else if (aclModifiesName && !moveTypes.contains(lemma1) && !isSynonymOf("player", lemma1, 0) && !lemma2.equals(name))
+					{
+						aclHasEquivalentType = true;
 						equivalentType = lemma2;
 					}
 				}
 			}
 
-			if (clauseHasEquivalentType)
+			if (aclHasEquivalentType)
 			{
 				currentPiece.addEquivalentType(equivalentType);
-				System.out.println("Equivalent type parsed for " + name + ": " + equivalentType);
+				System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + equivalentType);
 			}
 		}
 	}

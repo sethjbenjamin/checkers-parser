@@ -397,9 +397,9 @@ public class RulesParser
 				String lemma2 = lemmas[i][index2-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				/*The following checks if the sentence has any clause with name as its subject.
+				/*The following checks if the sentence has any clause with any name of the currentPiece as its subject.
 				Normally one should only check lemma2; checking lemma1 as well can help compensate for coreNLP bugs. */
-				if (d.contains("nsubj") && (lemma2.equals(name) || lemma1.equals(name)))
+				if (d.contains("nsubj") && (currentPiece.isAnyName(lemma2) || currentPiece.isAnyName(lemma1)))
 					isNameSubject = true;
 
 				/* The following checks if the sentence contains the predicate "become", which takes a noun argument
@@ -443,6 +443,14 @@ public class RulesParser
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
 				{
+					/* If any of the already parsed pieces has the name of the new piece listed as an equivalent type, it's probably 
+					by mistake. So, we check for that, and if so, remove the new piece name from the list of equivalents. */
+					if (p.isEquivalentType(transitionPieceName))
+					{
+						p.removeEquivalentType(transitionPieceName);
+						System.out.println(transitionPieceName + " removed from equivalent types of " + p.getName());
+					}
+					//check if we've already added the new piece to pieceTypes
 					if (p.equals(transitionPiece))
 					{
 						isAlreadyAdded = true;
@@ -454,6 +462,7 @@ public class RulesParser
 				if (!isAlreadyAdded) // if the piece hasn't already been added,
 				{
 					pieceTypes.add(transitionPiece); //add it
+					parseEquivalentTypes(transitionPiece); // check for equivalent types of the new piece
 					parseTransitionTypes(transitionPiece); // check for transition statements on the new piece
 				}
 			}
@@ -486,13 +495,13 @@ public class RulesParser
 				String lemma2 = lemmas[i][index2-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				/* The following checks if the sentence contains either of the predicates "become" or "make", specifically taking name
-				as either its direct object or its open clausal complement.*/
-				if ((d.contains("dobj") || d.contains("xcomp")) && (lemma1.equals("become") || lemma1.equals("make")) && lemma2.equals(name))
+				/* The following checks if the sentence contains either of the predicates "become" or "make", specifically taking any 
+				of the names of laterPiece as either its direct object or its open clausal complement. */
+				if ((d.contains("dobj") || d.contains("xcomp")) && (lemma1.equals("become") || lemma1.equals("make")) && laterPiece.isAnyName(lemma2))
 					isObjectName = true;
 				/* The following checks if the sentence contains the predicate "turn", specifically taking a prepositional
-				phrase headed by either "to" or "into" which takes name as its object.*/
-				else if ((d.contains("nmod:into") || d.contains("nmod:to")) && lemma1.equals("turn") && lemma2.equals(name))
+				phrase headed by either "to" or "into" which takes any of the names of laterPiece as its object.*/
+				else if ((d.contains("nmod:into") || d.contains("nmod:to")) && lemma1.equals("turn") && laterPiece.isAnyName(lemma2))
 					isObjectName = true;
 
 				/* The following checks if the sentence contains either of the predicates "become" or "turn", specifically 
@@ -501,7 +510,7 @@ public class RulesParser
 				If the subject is a pronoun, we call determineAntecedent() to determine what noun the pronoun refers to. 
 				If this fails (as it often does, because CoreNLP), we search for the predicate "reach" or any synonym of it 
 				in the sentence, and see what its subject is. This solution is not perfect, but a sufficient backup. */
-				if ((d.contains("nsubj")) && (lemma1.equals("become") || lemma1.equals("turn")) && !lemma2.equals(name))
+				if ((d.contains("nsubj")) && (lemma1.equals("become") || lemma1.equals("turn")))
 				{
 					if (pos2.charAt(0) == 'N')
 						previousPieceName = lemma2;
@@ -520,7 +529,7 @@ public class RulesParser
 				If the subject is a pronoun, we call determineAntecedent() to determine what noun the pronoun refers to. 
 				If this fails (as it often does, because CoreNLP), we search for the predicate "reach" or any synonym of it 
 				in the sentence, and see what its subject is. This solution is not perfect, but a sufficient backup. */
-				else if (d.contains("nsubjpass") && lemma1.equals("make") && !lemma2.equals(name))
+				else if (d.contains("nsubjpass") && lemma1.equals("make"))
 				{
 					if (pos2.charAt(0) == 'N')
 						previousPieceName = lemma2;
@@ -554,6 +563,14 @@ public class RulesParser
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
 				{
+					/* If any of the already parsed pieces has the name of the new piece listed as an equivalent type, it's probably 
+					by mistake. So, we check for that, and if so, remove the new piece name from the list of equivalents. */
+					if (p.isEquivalentType(previousPieceName))
+					{
+						p.removeEquivalentType(previousPieceName);
+						System.out.println(previousPieceName + " removed from equivalent types of " + p.getName());
+					}
+					//check if we've already added the new piece to pieceTypes
 					if (p.equals(previousPiece))
 					{
 						isAlreadyAdded = true;
@@ -566,7 +583,8 @@ public class RulesParser
 				{
 					pieceTypes.add(previousPiece); //add it
 					previousPiece.addTransitionSentence(i, name); //add the parsed transition sentence to its list of transition sentences
-					parsePreviousTypes(previousPiece);
+					parseEquivalentTypes(previousPiece); // check for equivalent types of the new piece
+					parsePreviousTypes(previousPiece); // check for previous types of the new piece
 				}
 			}
 		}

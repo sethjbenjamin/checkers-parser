@@ -54,11 +54,18 @@ public class Piece
 		this.previousType = previousType;
 	}
 
+	/**
+	Adds a single equivalent type to the list of equivalent types, if it's not already present.
+	*/
 	public void addEquivalentType(String otherName)
 	{
-		equivalentTypes.add(otherName);
+		if (!equivalentTypes.contains(otherName))
+			equivalentTypes.add(otherName);
 	}
 
+	/**
+	Adds multiple equivalent types at once to the list of equivalent types, if they're not already present.
+	*/
 	public void addEquivalentTypes(ArrayList<String> otherNames)
 	{
 		for (String otherName: otherNames)
@@ -68,9 +75,29 @@ public class Piece
 		}
 	}
 
+	/**
+	Checks if a given String is one of the equivalent types.
+	*/
 	public boolean isEquivalentType(String otherName)
 	{
 		return equivalentTypes.contains(otherName);
+	}
+
+	/**
+	Checks if a given String is any of the names used to refer to this piece 
+	(that is, either the field name or any of the equivalent types.)
+	*/
+	public boolean isAnyName(String otherName)
+	{
+		return name.equals(otherName) || equivalentTypes.contains(otherName);
+	}
+
+	/**
+	Removes a name from the list of equivalent types.
+	*/
+	public void removeEquivalentType(String otherName)
+	{
+		equivalentTypes.remove(otherName);
 	}
 
 	/**

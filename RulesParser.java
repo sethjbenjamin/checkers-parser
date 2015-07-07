@@ -726,8 +726,7 @@ public class RulesParser
 						For now, since it is the only such phrase that occurs in our 10 sample rulesets, the only object of "toward"/"towards"
 						that we will consider is the noun "opponent." This entails forward motion: "checkers can only move toward the opponent" 
 						is equivalent to "checkers can only move forward". */
-						String noun = isolateWordFromDependency(d,2); //the verb is the second word in the dependency substring
-						if (isSynonymOf("opponent", noun))
+						if (isSynonymOf("opponent", lemma2)) //the object of the preposition is the second word in the dependency
 						{
 							if (motionTypes.indexOf(Direction.FORWARD) < 0) //TODO: maybe add a negation check
 								motionTypes.add(Direction.FORWARD);
@@ -848,33 +847,6 @@ public class RulesParser
 
 	/**
 	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
-	this method isolates and returns either "word1" or "word2" as a String, depending on if whichWord equals 1 or 2 respectively.
-	Returns null if whichWord does not equal 1 or 2.
-	*/
-	public String isolateWordFromDependency(String dependency, int whichWord)
-	{
-		int startIndex, endIndex;
-		String word;
-
-		switch (whichWord)
-		{
-			case 1:
-				startIndex = dependency.indexOf("(") + 1; //index in dependency string of the first character of the first word
-				endIndex = dependency.lastIndexOf("-", dependency.indexOf(",")); //index in dependency string of hyphen immediately following first word
-				word = dependency.substring(startIndex, endIndex);
-				return word;
-			case 2: 
-				startIndex = dependency.indexOf(" ") + 1; //index in dependency string of the first character of the second word
-				endIndex = dependency.lastIndexOf("-"); //index in dependency string of hyphen immediately following second word
-				word = dependency.substring(startIndex, endIndex);
-				return word;
-			default: //whichWord can only equal 1 or 2, because a dependency string necessarily only contains two words
-				return null;
-		}
-	}
-
-	/**
-	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
 	this method isolates and returns either "index1" or "index2", depending on if whichIndex equals 1 or 2 respectively.
 	Returns -1 if whichWord does not equal 1 or 2.
 	*/
@@ -925,20 +897,6 @@ public class RulesParser
 				return -1; //error value - index in the sentence can never -1
 		}
 	}
-
-	/**
-	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
-	this method isolates and returns either "word1-index1" or "word2-index2", depending on if whichWord equals 1 or 2 respectively.
-	Returns null if whichWord does not equal 1 or 2.
-	*/
-	public String isolateWordWithIndex(String dependency, int whichWord)
-	{
-		if (whichWord == 1 || whichWord == 2)
-			return isolateWordFromDependency(dependency, whichWord) + "-" + isolateIndexFromDependency(dependency, whichWord);
-		else
-			return null;
-	}
-
 
 	/**
 	Tests if "first" and "second" are synonyms by seeing if "second" is one of the 

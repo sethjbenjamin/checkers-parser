@@ -31,6 +31,7 @@ public class RulesParser
 	private WordNetDatabase wordnet;
 
 	private ArrayList<String> moveTypes;
+	private ArrayList<Piece> pieceTypes;
 
 
 	public RulesParser(String fileName)
@@ -107,9 +108,8 @@ public class RulesParser
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
 		
-		moveTypes = parseMoveTypes();
-
-		ArrayList<Piece> pieceTypes = parsePieceTypes();
+		parseMoveTypes();
+		parsePieceTypes();
 
 		for (Piece p: pieceTypes)
 		{ 
@@ -118,9 +118,16 @@ public class RulesParser
 			p.addMotionTypes(motionTypes);
 		}
 
-		for (Piece p: pieceTypes)
+		for (int i = 0; i < pieceTypes.size(); i++)
 		{
-			if (!p.isDefault())
+			Piece p = pieceTypes.get(i);
+			if (p.getMotionTypes().size() == 0) // remove pieces with no parsed motion types (removes false positives)
+			{
+				System.out.println("Piece " + p.getName() + " removed");
+				pieceTypes.remove(p);
+				i--;
+			}
+			else if (!p.isDefault()) // add all motion types of a previous piece to its transition piece
 			{
 				Piece previous = p.getPreviousType();
 				p.addMotionTypes(previous.getMotionTypes());
@@ -128,7 +135,7 @@ public class RulesParser
 		}
 	}
 
-	public ArrayList<String> parseMoveTypes()
+	public void parseMoveTypes()
 	{
 		/* This method works by iterating over all lemmas in a ruleset, counting the number of times any hyponym of 
 		"move" appears in the ruleset, and choosing the n most frequent hyponyms to be the move types of the game.
@@ -142,7 +149,7 @@ public class RulesParser
 		each of these lemmas is the number of times this lemma occurs in the ruleset.
 		The n lemmas with highest Integer values are the n most frequent hyponyms of "move", and are therefore
 		interpreted to be the n types of moves (where n = NUM_MOVETYPES.) */
-		ArrayList<String> parsedMoveTypes = new ArrayList<String>(NUM_MOVETYPES);
+		moveTypes = new ArrayList<String>(NUM_MOVETYPES);
 
 		HashMap<String,Integer> moveHyponyms = new HashMap<String,Integer>();
 		for (int i = 0; i < sentences.size(); i++)
@@ -156,7 +163,6 @@ public class RulesParser
 					else // if the hyponym already is in the hashmap,
 						moveHyponyms.put(lemma, moveHyponyms.get(lemma)+1); // increment its value in the hashmap
 				}
-
 			}
 		}
 
@@ -168,23 +174,21 @@ public class RulesParser
 			{
 				String currentKey = entry.getKey();
 				int currentValue = entry.getValue();
-				if (maxValue < currentValue && !parsedMoveTypes.contains(currentKey))
+				if (maxValue < currentValue && !moveTypes.contains(currentKey))
 				{
 					maxValue = currentValue;
 					mostFrequentHyponym = currentKey;
 				}
 			}
-			parsedMoveTypes.add(mostFrequentHyponym);
+			moveTypes.add(mostFrequentHyponym);
 			System.out.println("Move type parsed: " + mostFrequentHyponym);
 		}
-		return parsedMoveTypes;
-
 	}
 
-	public ArrayList<Piece> parsePieceTypes()
+	public void parsePieceTypes()
 	{
 
-		ArrayList<Piece> pieceTypes = new ArrayList<Piece>(1);
+		pieceTypes = new ArrayList<Piece>(1);
 
 		/* The following hashmap associates String keys with Integer values. The String keys
 		are every unique lemma of every word in the current ruleset. The Integer value associated with
@@ -272,13 +276,12 @@ public class RulesParser
 		System.out.println("First piece type parsed: " + mostFrequentArgument); //debugging
 		Piece firstPiece = new Piece(mostFrequentArgument);
 		pieceTypes.add(firstPiece);
-		parseTransitionTypes(firstPiece, pieceTypes);
-		parsePreviousTypes(firstPiece, pieceTypes);
-		return pieceTypes;
-		
+
+		parseTransitionTypes(firstPiece);
+		parsePreviousTypes(firstPiece);
 	}
 
-	public void parseTransitionTypes(Piece currentPiece, ArrayList<Piece> pieceTypes)
+	public void parseTransitionTypes(Piece currentPiece)
 	{
 		for (int i = 0; i < sentences.size(); i++)
 		{
@@ -361,14 +364,13 @@ public class RulesParser
 				if (!isAlreadyAdded) // if the piece hasn't already been added,
 				{
 					pieceTypes.add(transitionPiece); //add it
-					parseTransitionTypes(transitionPiece, pieceTypes); // check for transition statements on the new piece
+					parseTransitionTypes(transitionPiece); // check for transition statements on the new piece
 				}
-
 			}
 		}
 	}
 
-	public void parsePreviousTypes(Piece laterPiece, ArrayList<Piece> pieceTypes)
+	public void parsePreviousTypes(Piece laterPiece)
 	{
 		for (int i = 0; i < sentences.size(); i++)
 		{
@@ -473,12 +475,10 @@ public class RulesParser
 				{
 					pieceTypes.add(previousPiece); //add it
 					previousPiece.addTransitionSentence(i, name); //add the parsed transition sentence to its list of transition sentences
-					parsePreviousTypes(previousPiece, pieceTypes);
+					parsePreviousTypes(previousPiece);
 				}
-
 			}
 		}
-
 	}
 
 
@@ -650,7 +650,6 @@ public class RulesParser
 			}
 		}
 		return indices;
-
 	}
 
 	public ArrayList<Direction> parseMotion(Piece p, ArrayList<Integer> indices)

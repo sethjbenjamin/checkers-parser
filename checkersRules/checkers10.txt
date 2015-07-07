@@ -8,7 +8,7 @@ Black moves first. Players then alternate moves. Moves are allowed only on the b
 JUMPING.
 A piece makes a jump by diagonally leaping over one of the opponent’s pieces and landing on the empty space on the other side (there must be an empty space to land on). Multiple jumps are allowed on a single turn. When a piece is jumped (“captured”), it is removed from the board and is now out of play. A player must make a jump if one presents itself. This is not an option. You must jump if you can and keep jumping if you have the opportunity. If you have more than one piece that can make a jump, you can decide which one to move on your turn.
 KINGS.
-When a piece reaches a space in the row on the opposite side of the board (the “King Me” row), its player picks up the piece and crowns it by twisting its base counter-clockwise, then sets it back on its space. It is now a King! Kings are move powerful than pieces because they can move diagonally forward and backwards. Kings may combine jumps in several directions – forward and backward – on the same turn.
+When a piece reaches a space in the row on the opposite side of the board (the “King Me” row), its player picks up the piece and crowns it by twisting its base counter-clockwise, then sets it back on its space. It is now a King! Kings are more powerful than pieces because they can move diagonally forward and backwards. Kings may combine jumps in several directions – forward and backward – on the same turn.
 
 WINNING.
 A player wins the game when the opponent cannot make a move. Usually, this is because all of the  opponent’s pieces have been captured, but sometimes it is because the opponent has no space to move onto (he is “blocked” from moving).

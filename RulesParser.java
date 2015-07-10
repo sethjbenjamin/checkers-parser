@@ -385,8 +385,10 @@ public class RulesParser
 			boolean isNameSubject = false;
 			boolean isTransitionSentence = false;
 			boolean isPassiveTransition = false; //used for a construction like "a checker is made a king"
+			boolean isPredicateNominative = false; //used for constructions like "the checker is now a king"
 
-			String transitionPieceName = null; 
+			String transitionPieceName = null;
+			String antecedent = null;
 
 			for (int j = 1; j < dependencies.length; j++)
 			{
@@ -395,12 +397,27 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d,2);
 				String lemma1 = lemmas[i][index1-1];
 				String lemma2 = lemmas[i][index2-1];
+				String pos1 = partsOfSpeech[i][index1-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				/*The following checks if the sentence has any clause with any name of the currentPiece as its subject.
-				Normally one should only check lemma2; checking lemma1 as well can help compensate for coreNLP bugs. */
-				if (d.contains("nsubj") && (currentPiece.isAnyName(lemma2) || currentPiece.isAnyName(lemma1)))
-					isNameSubject = true;
+				/*The following checks for subject dependencies in the current sentence.. */
+				if (d.contains("nsubj"))
+				{
+					/*The following checks if the sentence has any clause with any name of the currentPiece as its subject.
+					Normally one should only check lemma2, as it is what CoreNLP determines to be the subject; additionally 
+					checking lemma1, which is what CoreNLP determines to be the predicate, can help compensate for coreNLP bugs. 
+					TODO: maybe the check for lemma1 should be removed, since we now check for predicate nominatives */
+					if (currentPiece.isAnyName(lemma2) || currentPiece.isAnyName(lemma1))
+						isNameSubject = true;
+					/*The following checks uses CoreNLP's dcoref system to determine if the sentence has any clause with 
+					an anaphor as its subject whose antecedent is any name of the currentPiece. */
+					else if (pos2.equals("PRP"))
+					{
+						antecedent = determineAntecedent(i, index2);
+						if (currentPiece.isAnyName(antecedent))
+							isNameSubject = true;
+					}
+				}
 
 				/* The following checks if the sentence contains the predicate "become", which takes a noun argument
 				as either its direct object or its open clausal complement. If so, the noun argument is stored in transitionPieceName. */
@@ -416,7 +433,6 @@ public class RulesParser
 					isTransitionSentence = true; //if so, it is a transition sentence
 					transitionPieceName = lemma2;
 				}
-
 				//The following checks if the sentence is in the passive voice and has "make" as its predicate.
 				if (d.contains("nsubjpass") && lemma1.equals("make"))
 					isPassiveTransition = true; 
@@ -431,8 +447,33 @@ public class RulesParser
 					isTransitionSentence = true;
 					transitionPieceName = lemma2;
 				}
+				/* The following checks for a predicate nominative, like in the sentence "The checker is now a king.";
+				these are detected easily, as CoreNLP ignores copula in its dependencies, so we simply check for
+				a predicate that is a noun. */
+				if (d.contains("nsubj") && pos1.charAt(0) == 'N')
+				{
+					isPredicateNominative = true;
+					transitionPieceName = lemma1;
+				}
+				/* We only consider a predicate nominative as a transition sentence if it is modified by the adverb "now",
+				so the following checks for that. */
+				if (d.contains("advmod(") && pos1.charAt(0) == 'N' && lemma1.equals(transitionPieceName) && lemma2.equals("now") && isPredicateNominative)
+					isTransitionSentence = true;
 			}
-			if (isNameSubject && isTransitionSentence)
+			/* We only want to add this new piece as a transition piece if:
+			- any of the names of the currentPiece, or a pronoun referring to it, is a subject in the sentence
+			- any of the verbs "become", "turn into/to", and "make" (in the passive voice) is a predicate in the sentence,
+			taking a noun as an argument (the name of the transition piece)
+			- the name of the parsed transition piece is not the primary name of currentPiece
+			(it's okay if it is one of the equivalent names, as those are prone to mistakes, which this method helps correct)
+
+			Notably, this system never checks if either currentPiece or an anaphor referring to it is actually the subject of
+			any of the transition verbs; just if they are the subject of ANY predicate. This is deliberate, to compensate for CoreNLP bugs;
+			transition sentences are often parsed incorrectly. Thus, our imperfect system has the possibility of incorrectly interpreting 
+			non-transition sentences as transition sentences. (eg "When the checker reaches the last row, the bear becomes a fish" would
+			be interpreted as a sentence describing how checkers become fish). This, however, is uncommon in practice, as the false positives 
+			would have to be pretty unnatural/irrelevant sentences. */
+			if (isNameSubject && isTransitionSentence && !name.equals(transitionPieceName))
 			{
 				System.out.print("New transition piece found: " + transitionPieceName + " in sentence " + i); //debugging
 				System.out.println(" (previous type: " + name + ")"); //debugging
@@ -469,9 +510,9 @@ public class RulesParser
 		}
 	}
 
-	public void parsePreviousTypes(Piece laterPiece)
+	public void parsePreviousTypes(Piece currentPiece)
 	{
-		String name = laterPiece.getName();
+		String name = currentPiece.getName();
 
 		for (int i = 0; i < sentences.size(); i++)
 		{
@@ -496,12 +537,12 @@ public class RulesParser
 				String pos2 = partsOfSpeech[i][index2-1];
 
 				/* The following checks if the sentence contains either of the predicates "become" or "make", specifically taking any 
-				of the names of laterPiece as either its direct object or its open clausal complement. */
-				if ((d.contains("dobj") || d.contains("xcomp")) && (lemma1.equals("become") || lemma1.equals("make")) && laterPiece.isAnyName(lemma2))
+				of the names of currentPiece as either its direct object or its open clausal complement. */
+				if ((d.contains("dobj") || d.contains("xcomp")) && (lemma1.equals("become") || lemma1.equals("make")) && currentPiece.isAnyName(lemma2))
 					isObjectName = true;
 				/* The following checks if the sentence contains the predicate "turn", specifically taking a prepositional
-				phrase headed by either "to" or "into" which takes any of the names of laterPiece as its object.*/
-				else if ((d.contains("nmod:into") || d.contains("nmod:to")) && lemma1.equals("turn") && laterPiece.isAnyName(lemma2))
+				phrase headed by either "to" or "into" which takes any of the names of currentPiece as its object.*/
+				else if ((d.contains("nmod:into") || d.contains("nmod:to")) && lemma1.equals("turn") && currentPiece.isAnyName(lemma2))
 					isObjectName = true;
 
 				/* The following checks if the sentence contains either of the predicates "become" or "turn", specifically 
@@ -551,14 +592,19 @@ public class RulesParser
 						subjectOfReach = lemma2;
 				}
 			}
-
-			if (isObjectName && previousPieceName != null)
+			/* We only want to add this new piece as a previous piece if:
+			- the currentPiece is the object any of the verbs "become", "turn into/to", or "make" (in the passive voice)
+			- anything was parsed as the subject of those verbs (either directly the subject, the CoreNLP-determined antecedent
+			of an anaphor subject, or the subject of "reach" in another clause in the same sentence)
+			- the name of the parsed previous piece is not the primary name of currentPiece 
+			(it's okay if it is one of the equivalent names, as those are prone to mistakes, which this method helps correct) */
+			if (isObjectName && previousPieceName != null && !name.equals(previousPieceName))
 			{
 				System.out.print("New previous piece found: " + previousPieceName + " in sentence " + i); //debugging
 				System.out.println(" (transition type: " + name + ")"); //debugging
 				Piece previousPiece = new Piece(previousPieceName); 
-				//we have to set the previousType of laterPiece to this newly parsed piece
-				laterPiece.setPreviousType(previousPiece);
+				//we have to set the previousType of currentPiece to this newly parsed piece
+				currentPiece.setPreviousType(previousPiece);
 				//now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece

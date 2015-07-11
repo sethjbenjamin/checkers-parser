@@ -310,15 +310,31 @@ public class RulesParser
 				String pos1 = partsOfSpeech[i][index1-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				// The following checks for noun appositive phrases modifying name.
-				if (d.contains("appos(") && lemma1.equals(name) && pos2.charAt(0) == 'N')
+				// The following checks for noun appositive phrases modifying name, or being modified by name.
+				if (d.contains("appos("))
 				{
-					/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
-					we don't want to simply add the same name as its own equivalent. */
-					if (!moveTypes.contains(lemma2) && !isSynonymOf("player", lemma2, 0) && !lemma2.equals(name))
-					{
-						currentPiece.addEquivalentType(lemma2);
-						System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma2);
+					// The following checks if name is being modified by a noun appositive phrase.
+					if (lemma1.equals(name) && pos2.charAt(0) == 'N')
+					{ 	//If so, lemma2 is the modifier, and likely denotes an equivalent type to name.
+						/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
+						we don't want to simply add the same name as its own equivalent. */
+						if (!moveTypes.contains(lemma2) && !isSynonymOf("player", lemma2, 0) && !lemma2.equals(name))
+						{
+							currentPiece.addEquivalentType(lemma2);
+							System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma2);
+						}
+					}
+					// If not, the following checks if name is the head word in a appositive phrase modifying another noun.
+					else if (lemma2.equals(name) && pos1.charAt(0) == 'N')
+					{ 	// If so, lemma1 is the modified noun, and likely denotes an equivalent type to name.
+						/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
+						we don't want to simply add the same name as its own equivalent. */
+						if (!moveTypes.contains(lemma1) && !isSynonymOf("player", lemma1, 0) && !lemma1.equals(name))
+						{
+							currentPiece.addEquivalentType(lemma1);
+							System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma1);
+						}
+
 					}
 				}
 				/* The following checks for an adjectival clause modifying a noun, containing either 
@@ -386,6 +402,8 @@ public class RulesParser
 			boolean isTransitionSentence = false;
 			boolean isPassiveTransition = false; //used for a construction like "a checker is made a king"
 			boolean isPredicateNominative = false; //used for constructions like "the checker is now a king"
+			boolean isRenamingPredicate = false; //used for constructions with "called" or "known as" as predicates
+			boolean isModifiedByNow = false; 
 
 			String transitionPieceName = null;
 			String antecedent = null;
@@ -447,6 +465,7 @@ public class RulesParser
 					isTransitionSentence = true;
 					transitionPieceName = lemma2;
 				}
+
 				/* The following checks for a predicate nominative, like in the sentence "The checker is now a king.";
 				these are detected easily, as CoreNLP ignores copula in its dependencies, so we simply check for
 				a predicate that is a noun. */
@@ -455,11 +474,29 @@ public class RulesParser
 					isPredicateNominative = true;
 					transitionPieceName = lemma1;
 				}
-				/* We only consider a predicate nominative as a transition sentence if it is modified by the adverb "now",
-				so the following checks for that. */
-				if (d.contains("advmod(") && pos1.charAt(0) == 'N' && lemma1.equals(transitionPieceName) && lemma2.equals("now") && isPredicateNominative)
-					isTransitionSentence = true;
+				/* The following checks for sentences with the predicates "know" or "call", the former taking
+				a prepositional phrase headed by "as" as an argument and the latter taking a noun direct object. */
+				if ((d.contains("nmod:as") && lemma1.equals("know")) || (d.contains("dobj") && lemma1.equals("call")))
+				{
+					isRenamingPredicate = true;
+					transitionPieceName = lemma2;
+				}
+				/* We only consider predicate nominatives or either of the "renaming predicates" as transition sentences 
+				if they are modified by the adverb "now", so the following checks for that. */
+				if (d.contains("advmod(") && lemma2.equals("now"))
+				{
+					//check for a predicate nominative
+					if (pos1.charAt(0) == 'N' && lemma1.equals(transitionPieceName))
+						isModifiedByNow = true;
+					//check for a "renaming predicate"
+					else if (lemma1.equals("know") || lemma1.equals("call"))
+						isModifiedByNow = true;
+				}
 			}
+			//Sentences with either predicate nominatives or either of the renaming predicates, modified by "now", are transition sentences	
+			if ((isPredicateNominative || isRenamingPredicate) && isModifiedByNow)
+				isTransitionSentence = true;
+
 			/* We only want to add this new piece as a transition piece if:
 			- any of the names of the currentPiece, or a pronoun referring to it, is a subject in the sentence
 			- any of the verbs "become", "turn into/to", and "make" (in the passive voice) is a predicate in the sentence,
@@ -538,7 +575,9 @@ public class RulesParser
 
 				/* The following checks if the sentence contains either of the predicates "become" or "make", specifically taking any 
 				of the names of currentPiece as either its direct object or its open clausal complement. */
-				if ((d.contains("dobj") || d.contains("xcomp")) && (lemma1.equals("become") || lemma1.equals("make")) && currentPiece.isAnyName(lemma2))
+				if ((d.contains("dobj") || d.contains("xcomp")) && 
+					(lemma1.equals("become") || lemma1.equals("make")) && 
+					currentPiece.isAnyName(lemma2))
 					isObjectName = true;
 				/* The following checks if the sentence contains the predicate "turn", specifically taking a prepositional
 				phrase headed by either "to" or "into" which takes any of the names of currentPiece as its object.*/
@@ -652,21 +691,19 @@ public class RulesParser
 		a motion sentence for p.
 		- either any of the names of the piece or a pronoun that refers to any of those names is an argument 
 		  (either subject or direct object) of a predicate that denotes one of the allowed types of motion in the game 
-		  (the truth value of this property is stored by the boolean variable isMoveArgument)
 		- the sentence is not a transition sentence for p (that is, a sentence that describes how p can turn into a different
 		  type of piece) (this is determined by calling p.isTransitionSentence(i) where i is the index of the sentence)
 
 		There are a few exceptions:
+		- if p is the default type, any sentence containing the noun "move" will be considered a motion sentence
+		  (eg: "Only diagonal and forward moves are allowed.")
+		- if p is not the default type, any transition sentences that describe how p.previousType becomes p is considered a motion sentence.
 		- if the sentence contains a verb that describes motion in the game, with an anaphor as an argument, and the anaphor's antecedent
-		  refers not to p but instead to p.previousType, the sentence is considered a motion sentence if the sentence containing
+		  refers not to p but instead to p.previousType, the sentence is considered a motion sentence for p if the sentence containing
 		  the anaphor's antecedent is a transition sentence for p.previousType. 
 		  (eg: "A checker becomes a king upon reaching the king row. It then can move backward and forward." "it" refers to "checker",
 		  but the sentence containing "checker" is a transition sentence for "checker"; therefore, the second sentence
 		  is considered a motion sentence for king.)
-		- if name is the modifier of a noun compound (eg. "king piece" where name == king), then the modified noun ("piece" in "king piece")
-		  can also substitute for name in the previous properties and the sentence will be considered a motion sentence. (the boolean variable 
-		  isNameCompounded is set to true if name is the modifier of a noun compound, and the String compoundedNoun stores the lemma of the
-		  modified noun.)
 		*/
 
 		//iterate over all sentences
@@ -679,11 +716,10 @@ public class RulesParser
 				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
-			boolean isMovePredicate = false;
+			boolean isMotionSentence = false;
 			int index = -1;
 
 			boolean isNameCompounded = false;
-			String compoundedNoun = null;
 			int compoundedNounIndex = -1;
 
 			//iterate over all dependencies of the current sentence
@@ -697,29 +733,41 @@ public class RulesParser
 				String pos1 = partsOfSpeech[i][index1-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				/* The following if statement checks if one of the names of p is a modifier in a noun compound. This matters because sometimes 
-				a noun compound, of which the current name of the piece is the modifying noun, is used instead of just name itself, for example:
-				"King pieces can move in both directions, forward and backward." uses the noun compound "king pieces" instead of just saying
-				"king". 
-				If this is the case, we have to take the modified noun in the compound - in our above example, "pieces" - and store it in
-				compoundedNoun; we do this as we will later have to check if compoundedNoun is an argument of a motion verb. (If it is,
+				/* The following if block checks if one of the names of p is a either a modifier or modified in a noun compound. 
+				This matters because sometimes  a noun compound, of which the current name of the piece is the modifying noun, is used 
+				instead of just the name itself, for example:
+				"King pieces can move in both directions, forward and backward." uses the noun compound "king pieces" instead of just 
+				saying "king". (CoreNLP parses "king pieces" under the dependency "compound(piece, king)")
+				If this is the case, we have to take the modified noun in the compound - in our above example, "pieces" - and store its 
+				index; we do this as we will later have to check if the compounded noun is an argument of a motion verb. (If it is,
 				we have to treat this the same as if the piece's name itself were an argument.) */
-				if (d.contains("compound(") && p.isAnyName(lemma2))
+				if (d.contains("compound("))
 				{
-					isNameCompounded = true;
-					compoundedNoun = lemma1;
-					compoundedNounIndex = index1;
+					if (p.isAnyName(lemma2))
+					{
+						isNameCompounded = true;
+						compoundedNounIndex = index1;
+					}
+					/* On the other hand, if the modified noun in the noun compound is one of the names of p, we should NOT consider
+					this a motion sentence; in our previous example, "King pieces can move in both directions, forward and backward"
+					should NOT be considered a motion sentence for p = "piece". */
+					else if (p.isAnyName(lemma1))
+					{
+						isMotionSentence = false;
+						break;
+					}
 				}
 
 				/* The following if statement checks if the current sentence contains any of the move types previously parsed
 				by the system as a predicate, and if so, if it either takes name or a pronoun as a subject or direct object. */
 				if (moveTypes.contains(lemma1) && (d.contains("dobj") || d.contains("nsubj")))
 				{
+					//if p is a transition type, previousType holds its previous type
 					Piece previousType = p.getPreviousType();
 					//if the argument of the motion predicate is any of the names of p, this is probably a motion sentence
 					if (p.isAnyName(lemma2))
 					{
-						isMovePredicate = true;
+						isMotionSentence = true;
 						index = i;
 					}
 					//the following checks if the predicate's argument is a pronoun
@@ -732,60 +780,71 @@ public class RulesParser
 						sentence or the previous one) is not a transition statement of p. */
 						if (p.isAnyName(antecedent) && !p.isTransitionSentence(i) && !p.isTransitionSentence(i-1))
 						{
-							isMovePredicate = true;
+							isMotionSentence = true;
 							index = i;
 						}
-						/* In the case of the following sentence:
-						"When a checker reaches the row on the farthest edge from the player, it becomes a king and may 
-						then move and jump both diagonally forward and backward, following the same rules as above."
-						the antecedent of "it" is grammatically "checker"; however, this sentence describes the motion of
+						/* In the case of the following sentences:
+						"When a checker reaches the row on the farthest edge from the player, the checker becomes a king. It may 
+						then move and jump both diagonally forward and backward."
+						the antecedent of "it" is grammatically "checker"; however, the second sentence describes the motion of
 						kings, not checkers (that is, it describes the motion of checkers after they become kings.)
 						Thus, when the antecedent of a pronoun refers not to p (the piece we are currently parsing the motion of),
 						but instead to p's previous type, we have to check if the sentence containing the antecedent (assumed to be
-						either the current sentence or the previous one) is a transition sentence describing how previousType becomes p; 
-						if it is, we must still consider the current sentence a motion sentence for p. */
-						else if (previousType != null && 
-							previousType.isAnyName(antecedent) && 
-							(previousType.isTransitionSentence(i, name) || previousType.isTransitionSentence(i-1, name)))
+						the previous sentence) is a transition sentence describing how previousType becomes p; 
+						if it is, we must still consider the current sentence a motion sentence for p. 
+						(If the antecedent is not in the previous sentence but instead is in the current one, and the sentence is
+						a transition sentence for previousType, it will already be added below, so we do not need to check for that. */
+						else if (previousType != null && previousType.isAnyName(antecedent) && previousType.isTransitionSentence(i-1, name))
 						{
-							isMovePredicate = true;
+							isMotionSentence = true;
 							index = i; 
 						}
 					}
-					/* Same as above: in case of name being a modifier in a noun compound (that is, if isNameCompounded == true), 
+					/* In case of one of the names of currentPiece being a modifier in a noun compound (that is, if isNameCompounded == true),
 					we have to check if the noun it modifies is an argument of a motion verb as well, as this is equivalent to name itself 
 					being one. */
-					else if (isNameCompounded && lemma2.equals(compoundedNoun) && index2 == compoundedNounIndex)
+					if (isNameCompounded && index2 == compoundedNounIndex)
 					{
-						isMovePredicate = true;
+						isMotionSentence = true;
 						index = i;
-					}
-				}
-
-				/* The following if statement checks p is the default piece, and if so, if the current sentence 
-				contains the noun "move". This is because a statement like 
-				"Only diagonal moves are allowed." 
-				often is used to describe the motion of the default piece. */
-				if (p.isDefault())
-				{ 
-					if ((lemma1.equals("move") && pos1.charAt(0) == 'N') || (lemma2.equals("move") && pos2.charAt(0) == 'N'))
-					{
-						//if the sentence contains the noun "move," add its index to indices
-						if (!indices.contains(i))
-						{
-							indices.add(i);
-							System.out.println("Motion sentence index for " + name + ": " + i + " (found from move (n))");
-						}
 					}
 				}
 			}
 
+			/* The following if statement checks p is the default piece, and if so, if the current sentence 
+			contains the noun "move". This is because a statement like "Only diagonal moves are allowed." 
+			is often used to describe the motion of the default piece. */
+			if (p.isDefault())
+			{
+				//iterate over all lemmas and parts of speech
+				for (int j = 0; j < lemmas[i].length; j++)
+				{
+					if (lemmas[i][j].equals("move") && partsOfSpeech[i][j].charAt(0) == 'N')
+					{
+						isMotionSentence = true;
+						index = i;
+					}
+				}
+			}
+			/* If p is not the default piece, it has a previousType. We consider all transition sentences
+			that describe how p.previousType becomes p to be potential motion sentences for p.
+			Thus, the following else block checks if the current sentence is a transition sentence for p.previousType. */
+			else
+			{
+				Piece previousType = p.getPreviousType();
+				if (previousType.isTransitionSentence(i, name))
+				{
+					isMotionSentence = true;
+					index = i;
+				}
+			}
+
 			/* We only want to add the current sentence's index to indices if:
-			- one of the allowed movetypes is a predicate, which takes either name or a pronoun referring to it as an argument 
-			  (that is, if isMovePredicate == true)
-			- the sentence is not a transition sentence for p
-			*/
-			if (isMovePredicate && !p.isTransitionSentence(i))
+			- one of the allowed movetypes is a predicate, which takes either name or a pronoun referring to it as an argument,
+			  or any of the previously mentioned exceptions is occurring
+			  (that is, if isMotionSentence == true)
+			- the sentence is not a transition sentence for p */
+			if (isMotionSentence && !p.isTransitionSentence(i))
 			{
 				if (!indices.contains(index)) //also, we don't want to add multiple of the same index
 				{

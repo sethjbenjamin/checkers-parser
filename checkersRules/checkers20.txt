@@ -27,7 +27,7 @@ When two or more pieces are in a position of capture, they are subject to the la
 
 Law of Quantity: it is mandatory to capture the highest number of pieces as possible.
 Law of Quality: when the number of pieces to be captured is the same, it is mandatory to capture the ones with a higher quality, that is, the king before a piece.
-End of game
+End of game.
 The game ends when a player leaves it, has no pieces or the pieces do not have any possibilities of move (blocked or cornered).
 
 There is a tie when both players agree on it.

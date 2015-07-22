@@ -11,9 +11,10 @@ public class ZRFWriter
 	/* number of players is assumed to be 2, as most zrf games are 2-player (human vs. computer) 
 	and writing the sections for board symmetry depends on having only 2 players */
 
-	private int[] dimensions;
+	private int[] dimensions; //dimensions[0] is the number of rows, dimensions[1] is the number of columns
 	private String[][] board;
 	private boolean[][] boardColors; // true is black, false is white
+	private int numInitialRows; // the number of rows each player initially fills with pieces
 	private int numInitialPieces; //the number of pieces each player initially starts with
 	private ArrayList<String> moveTypes;
 	private ArrayList<Piece> pieceTypes;
@@ -42,6 +43,7 @@ public class ZRFWriter
 
 		//dimensions = new int[2];
 		dimensions = new int[]{8,8}; //placeholder (TODO)
+		numInitialRows = 3; //placeholder (TODO)
 		numInitialPieces = 12; //placeholder (TODO)
 		board = new String[dimensions[0]][dimensions[1]];
 		boardColors = new boolean[dimensions[0]][dimensions[1]];
@@ -60,6 +62,7 @@ public class ZRFWriter
 			writePlayers();
 			writeBoard();
 			writeBoardSetup();
+			writePieces();
 
 			writer.write(")"); // close (game )
 		}
@@ -208,38 +211,71 @@ public class ZRFWriter
 				writer.write("\t\t" + "(P" + playerNum + " (" + defaultName + " ");
 				//now we must determine what the initial positions of all the pieces are
 
-				String[] initialPositions = new String[numInitialPieces];
+				String[] initialPositions = new String[0]; 
+				/* initialized with length 0 so that if neither numInitialRows nor numInitialPieces are greater than zero
+				(meaning RulesParser was unable to determine any initial positions), the program doesn't crash when we later
+				try to iterate over initialPositions */
 				int i = 0;
 
 				int row, column;
-				//The following block is also dependent on NUM_PLAYERS equaling 2!
 				if (playerNum == 1) //player 1
 					row = 0; //player 1's pieces start at the top and are filled downward
 				else //player 2 (depends on NUM_PLAYERS being 2 - if greater, the remaining player's pieces will be on top of player 2's pieces)
 					row = dimensions[0]-1; //player 2's pieces start at the bottom and are filled upward
 				column = 0;
 
-				while (i < numInitialPieces)
-				{	
-					//TODO - the following if statement is just hard-coded with the knowledge that the game happens only on dark squares!
-					if (boardColors[row][column]) // if this is a dark square,
+				/* All of the following blocks determinning initial positions of pieces are dependent on NUM_PLAYERS equaling 2!
+				They will misbehave if NUM_PLAYERS is greater than 2. */
+				if (numInitialRows > 0)
+				{
+					int numRowsFilled = 0; //the number of rows we have currently filled
+					initialPositions = new String[ numInitialRows * dimensions[0] / 2 ]; //TODO - hard coded with knowledge of only dark squares
+					while (numRowsFilled < numInitialRows)
 					{
-						initialPositions[i] = board[row][column]; // consider it one of the initial positions
-						i++; // increment the running index of initialPositions
+						//TODO - the following if statement is just hard-coded with the knowledge that the game happens only on dark squares!
+						if (boardColors[row][column]) // if this is a dark square,
+						{
+							initialPositions[i] = board[row][column]; // consider it one of the initial positions
+							i++; // increment the running index of initialPositions
+						}
+						column++; //advance to the next column 
+						if (column >= dimensions[1]) // if we're out of columns, 
+						{
+							if (playerNum == 1) // for player 1,
+								row++; //move down to the next row
+							else // for player 2,
+								row--; //move up to the previous row
+							column = 0; //reset to first column of new row
+							numRowsFilled++;
+						}
 					}
-					column++; //advance to the next column 
-					if (column >= dimensions[1]) // if we're out of columns, 
-					{
-						if (playerNum == 1) // for player 1,
-							row++; //move down to the next row
-						else // for player 2,
-							row--; //move up to the previous row
-						column = 0; //reset to first column of new row
+				}
+				else if (numInitialPieces > 0)
+				{
+					initialPositions = new String[numInitialPieces];
+					while (i < numInitialPieces)
+					{	
+						//TODO - the following if statement is just hard-coded with the knowledge that the game happens only on dark squares!
+						if (boardColors[row][column]) // if this is a dark square,
+						{
+							initialPositions[i] = board[row][column]; // consider it one of the initial positions
+							i++; // increment the running index of initialPositions
+						}
+						column++; //advance to the next column 
+						if (column >= dimensions[1]) // if we're out of columns, 
+						{
+							if (playerNum == 1) // for player 1,
+								row++; //move down to the next row
+							else // for player 2,
+								row--; //move up to the previous row
+							column = 0; //reset to first column of new row
+						}
 					}
 				}
 
 				for (String position: initialPositions)
-					writer.write(position + " ");
+					if (position != null)
+						writer.write(position + " ");
 				writer.write(") )" + "\n");
 			}
 			writer.write("\t" + ")" + "\n"); // close (board-setup)
@@ -259,13 +295,20 @@ public class ZRFWriter
 			for (Piece p: pieceTypes)
 			{
 				String name = p.getName().toUpperCase(); //upper case so the zrf engine doesn't confuse the piece name for a zrf keyword
-				writer.write("\t (piece \n");
-				writer.write("\t \t (name " + name + ")");
-				writer.write("\t \t (moves \n");
+				writer.write("\t" + "(piece" + "\n"); //open (piece )
+				writer.write("\t\t" + "(name " + name + ")" + "\n"); //write the piece's name to zrf
+				//write the piece's moves to zrf
+				writer.write("\t\t" + "(moves" + "\n"); // open (moves )
 				for (String moveType: moveTypes)
 				{
-					writer.write("\t \t \t ("); 
+					writer.write("\t\t\t" + "(move-type " + moveType.toUpperCase() + ")" + "\n");
+					//TODO: HANDLE DIRECTIONS!
+
+					writer.newLine(); 
 				}
+				writer.write("\t\t" + ")" + "\n"); // close (moves )
+				writer.write("\t" + ")" + "\n"); // close (piece )
+
 			}
 
 		}

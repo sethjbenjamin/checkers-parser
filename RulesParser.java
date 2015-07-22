@@ -800,9 +800,9 @@ public class RulesParser
 							index = i; 
 						}
 					}
-					/* In case of one of the names of currentPiece being a modifier in a noun compound (that is, if isNameCompounded == true),
-					we have to check if the noun it modifies is an argument of a motion verb as well, as this is equivalent to name itself 
-					being one. */
+					/* In case of one of the names of currentPiece being a modifier in a noun compound (that is, if 
+					isNameCompounded == true), we have to check if the noun it modifies is an argument of a motion verb as well, as this 
+					is equivalent to name itself being one. */
 					if (isNameCompounded && index2 == compoundedNounIndex)
 					{
 						isMotionSentence = true;
@@ -898,11 +898,11 @@ public class RulesParser
 					-one of the allowed move types
 					-a synonym of "move (n)" or "direction (n)"
 					-a coordinating conjunction (explained below)
-					In a previous implementation, these dependencies (advmod and amod) were checked separately; checking for either at the same time
-					as we are now actually allows not only for constructions in which directional adverbs modify verbs and directional adjectives 
-					modify nouns, but also for those in which directional adverbs modify nouns and directional adjectives modify verbs. 
-					This is grammatically impossible in Standard English, but Stanford CoreNLP often incorrectly analyzes sentences as 
-					having such constructions, so checking for them gets better results.
+					In a previous implementation, these dependencies (advmod and amod) were checked separately; checking for either at the
+					same time as we are now actually allows not only for constructions in which directional adverbs modify verbs and 
+					directional adjectives modify nouns, but also for those in which directional adverbs modify nouns and directional 
+					adjectives modify verbs. This is grammatically impossible in Standard English, but Stanford CoreNLP often incorrectly 
+					analyzes sentences as having such constructions, so checking for them gets better results.
 
 					Additionally, Stanford CoreNLP has a strange bug in which a sentence such as the following: 
 					"Kings move forward and backwards."
@@ -910,7 +910,10 @@ public class RulesParser
 					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
 					Since our example sentence is one of the more common ways English language rulesets describe the motion of kings,
 					we must also check if modified is a coordinating conjunction. */
-					if (moveTypes.contains(lemma1) || isSynonymOf("move", lemma1) || isSynonymOf("direction", lemma1) || isCoordinatingConjunction(lemma1))
+					if (moveTypes.contains(lemma1) || 
+						isSynonymOf("move", lemma1) || 
+						isSynonymOf("direction", lemma1) || 
+						isCoordinatingConjunction(lemma1))
 					{
 						/*Now, we call addDirection() to check if lemma2, the modifier, is a directional adverb or adjective, and if so, to
 						add it to motionTypes. */
@@ -927,9 +930,10 @@ public class RulesParser
 						/*At this point, we have determined that the phrase we are looking at is a PP of the form "toward/towards [DP]" 
 						modifying a motion predicate, or either of the nouns "move" or "direction". 
 						Now we have to determine the object of the proposition, and what direction of motion this object implies. 
-						For now, since it is the only such phrase that occurs in our 10 sample rulesets, the only object of "toward"/"towards"
-						that we will consider is the noun "opponent." This entails forward motion: "checkers can only move toward the opponent" 
-						is equivalent to "checkers can only move forward". */
+						For now, since it is the only such phrase that occurs in our 10 sample rulesets, the only object of 
+						"toward"/"towards"
+						that we will consider is the noun "opponent." This entails forward motion: "checkers can only move toward the 
+						opponent" is equivalent to "checkers can only move forward". */
 						if (isSynonymOf("opponent", lemma2)) //the object of the preposition is the second word in the dependency
 						{
 							if (motionTypes.indexOf(Direction.FORWARD) < 0) //TODO: maybe add a negation check
@@ -1062,7 +1066,7 @@ public class RulesParser
 		switch (whichIndex)
 		{
 			case 1:
-				endIndex = dependency.indexOf(","); //index in dependecy string of the comma immediately following the first index
+				endIndex = dependency.indexOf(","); //index in dependency string of the comma immediately following the first index
 				startIndex = dependency.lastIndexOf("-", endIndex) + 1; //index in dependency string of the first digit of of the first index
 				try
 				{
@@ -1084,7 +1088,7 @@ public class RulesParser
 				}
 			case 2: 
 				startIndex = dependency.lastIndexOf("-") + 1; //index in dependency string of the first digit of the second index
-				endIndex = dependency.indexOf(")"); //index in dependency string of the right parenthesis immediately following the second index
+				endIndex = dependency.indexOf(")"); //index in dependency string of the right parenthesis immediately following second index
 				try
 				{
 					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
@@ -1097,7 +1101,7 @@ public class RulesParser
 					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex)); 
 					return isolatedIndex;
 				}
-			default: //whichIndex can only equal 1 or 2, because a dependency string necessarily only contains 2 words (and therefore 2 indices)
+			default: //whichIndex can only equal 1 or 2, because a dependency string can only contain 2 tokens (and therefore 2 indices)
 				return -1; //error value - index in the sentence can never -1
 		}
 	}

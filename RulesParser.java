@@ -135,6 +135,12 @@ public class RulesParser
 		}
 	}
 
+	public ZRFWriter makeZRFWriter()
+	{
+		ZRFWriter writer = new ZRFWriter(fileName, moveTypes, pieceTypes);
+		return writer;
+	}
+
 	public void parseMoveTypes()
 	{
 		/* This method works by iterating over all lemmas in a ruleset, counting the number of times any hyponym of 

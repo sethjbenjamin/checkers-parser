@@ -42,8 +42,6 @@ public class RulesParser
 		Properties annotators = new Properties();
 		annotators.put("annotators", "tokenize, ssplit, pos, lemma, parse, ner, dcoref");
 		pipeline = new StanfordCoreNLP(annotators);
-
-		//wordnet = WordNetDatabase.getFileInstance();
 	}
 
 	public void readFile()
@@ -889,6 +887,7 @@ public class RulesParser
 				int index2 = isolateIndexFromDependency(d, 2); 
 				String lemma1 = lemmas[i][index1-1]; 
 				String lemma2 = lemmas[i][index2-1]; 
+				String pos1 = partsOfSpeech[i][index1-1];
 
 				if (d.contains("neg("))
 					negatedWords.add(index1);
@@ -916,10 +915,7 @@ public class RulesParser
 					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
 					Since our example sentence is one of the more common ways English language rulesets describe the motion of kings,
 					we must also check if modified is a coordinating conjunction. */
-					if (moveTypes.contains(lemma1) || 
-						isSynonymOf("move", lemma1) || 
-						isSynonymOf("direction", lemma1) || 
-						isCoordinatingConjunction(lemma1))
+					if (moveTypes.contains(lemma1) || isSynonymOf("move", lemma1) || isSynonymOf("direction", lemma1) || pos1.equals("CC"))
 					{
 						/*Now, we call addDirection() to check if lemma2, the modifier, is a directional adverb or adjective, and if so, to
 						add it to motionTypes. */
@@ -1007,25 +1003,6 @@ public class RulesParser
 	}
 
 	/**
-	Using CoreNLP's dependency parsing, determines if one word (index1) dominates another word (index2) in a parse tree 
-	(without actually utilizing the parse tree constructed by CoreNLP, since those are usually wrong - uses the semantic dependency
-	graph, which is not exactly the same nor has exactly the same structure, but the concept of dominance roughly still applies - 
-	if node1 dominates node2 in the semantic graph, then node2 is either directly dependent on node1, or indirectly so, by being dependent
-	on something else that is dependent on node2).
-	Returns false if either of the indices are not valid indices in the sentence whose dependencies are represented by graph.
-	*/
-	public static boolean dominates(SemanticGraph graph, int index1, int index2)
-	{
-		IndexedWord node1 = graph.getNodeByIndexSafe(index1);
-		IndexedWord node2 = graph.getNodeByIndexSafe(index2);
-
-		if (node1 != null && node2 != null)
-			return graph.getPathToRoot(node2).contains(node1);
-		else
-			return false;
-	}
-
-	/**
 	Uses CoreNLP's dcoref system to determine the antecedent of an anaphor. Necessarily returns a noun - either returns the head word
 	of the NP antecedent, or, if the antecedent is not an NP, returns the first noun in the phrase.
 	Returns an empty string if CoreNLP is unable to determine an antecedent for the word.
@@ -1077,6 +1054,29 @@ public class RulesParser
 		}
 		return ""; //dummy value
 	}
+
+	/**
+	Using CoreNLP's dependency parsing, determines if one word (index1) dominates another word (index2) in the semantic dependency graph 
+	of the sentence with index sentenceIndex.
+	(This does not actually utilize the parse tree constructed by CoreNLP, since those are usually wrong - instead, it uses the semantic 
+	dependency graph, which is not exactly the same nor has exactly the same structure, but the concept of dominance roughly still applies.
+	Specifically, if node1 dominates node2 in the semantic graph, then node2 is either directly dependent on node1, or indirectly so, by 
+	being dependent on something else that is dependent on node2).
+	Returns false if either of the indices are not valid indices in the sentence with index sentenceIndex.
+	*/
+	public boolean dominates(int sentenceIndex, int index1, int index2)
+	{
+		SemanticGraph graph = sentences.get(i).get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+
+		IndexedWord node1 = graph.getNodeByIndexSafe(index1);
+		IndexedWord node2 = graph.getNodeByIndexSafe(index2);
+
+		if (node1 != null && node2 != null)
+			return graph.getPathToRoot(node2).contains(node1);
+		else
+			return false;
+	}
+
 
 	/**
 	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
@@ -1187,15 +1187,4 @@ public class RulesParser
 		}
 		return false;
 	}
-
-	/**
-	Tests if a word stored in a String is a coordinating conjunction. 
-	Helpful to know because CoreNLP is bad at dealing with coordinating conjunctions.
-	*/
-	public boolean isCoordinatingConjunction(String word)
-	{
-		return word.equals("for") || word.equals("and") || word.equals("nor") || 
-		word.equals("but") || word.equals("or") || word.equals("yet") || word.equals("so");
-	}
-	
 }

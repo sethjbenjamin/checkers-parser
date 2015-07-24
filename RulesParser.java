@@ -1007,6 +1007,23 @@ public class RulesParser
 	}
 
 	/**
+	Using CoreNLP's dependency parsing, determines if one word (index1) dominates another word (index2) in a parse tree 
+	(without actually utilizing the parse tree constructed by CoreNLP, since those are usually wrong - uses the semantic dependency
+	graph, which is not exactly the same nor has exactly the same structure, but the concept of dominance roughly still applies).
+	Returns false if either of the indices are not valid indices in the sentence whose dependencies are represented by graph.
+	*/
+	public static boolean dominates(SemanticGraph graph, int index1, int index2)
+	{
+		IndexedWord node1 = graph.getNodeByIndexSafe(index1);
+		IndexedWord node2 = graph.getNodeByIndexSafe(index2);
+
+		if (node1 != null && node2 != null)
+			return graph.getPathToRoot(node2).contains(node1);
+		else
+			return false;
+	}
+
+	/**
 	Uses CoreNLP's dcoref system to determine the antecedent of an anaphor. Necessarily returns a noun - either returns the head word
 	of the NP antecedent, or, if the antecedent is not an NP, returns the first noun in the phrase.
 	Returns an empty string if CoreNLP is unable to determine an antecedent for the word.
@@ -1064,7 +1081,7 @@ public class RulesParser
 	this method isolates and returns either "index1" or "index2", depending on if whichIndex equals 1 or 2 respectively.
 	Returns -1 if whichWord does not equal 1 or 2.
 	*/
-	public int isolateIndexFromDependency(String dependency, int whichIndex)
+	public static int isolateIndexFromDependency(String dependency, int whichIndex)
 	{
 		int startIndex, endIndex;
 		int isolatedIndex;

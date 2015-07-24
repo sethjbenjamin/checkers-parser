@@ -28,7 +28,7 @@ public class RulesParser
 	private String[][] lemmas; //lemmas[i][j] holds the lemma of the jth word in the ith sentence of the text
 	private String[][] partsOfSpeech; //partsOfSpeech[i][j] holds the POS of the jth word in the ith sentence of the text
 	//WordNet 3.0 implementation using JAWS:
-	private WordNetDatabase wordnet;
+	private static WordNetDatabase wordnet = WordNetDatabase.getFileInstance();
 
 	private ArrayList<String> moveTypes;
 	private ArrayList<Piece> pieceTypes;
@@ -43,7 +43,7 @@ public class RulesParser
 		annotators.put("annotators", "tokenize, ssplit, pos, lemma, parse, ner, dcoref");
 		pipeline = new StanfordCoreNLP(annotators);
 
-		wordnet = WordNetDatabase.getFileInstance();
+		//wordnet = WordNetDatabase.getFileInstance();
 	}
 
 	public void readFile()
@@ -1009,7 +1009,9 @@ public class RulesParser
 	/**
 	Using CoreNLP's dependency parsing, determines if one word (index1) dominates another word (index2) in a parse tree 
 	(without actually utilizing the parse tree constructed by CoreNLP, since those are usually wrong - uses the semantic dependency
-	graph, which is not exactly the same nor has exactly the same structure, but the concept of dominance roughly still applies).
+	graph, which is not exactly the same nor has exactly the same structure, but the concept of dominance roughly still applies - 
+	if node1 dominates node2 in the semantic graph, then node2 is either directly dependent on node1, or indirectly so, by being dependent
+	on something else that is dependent on node2).
 	Returns false if either of the indices are not valid indices in the sentence whose dependencies are represented by graph.
 	*/
 	public static boolean dominates(SemanticGraph graph, int index1, int index2)
@@ -1134,7 +1136,7 @@ public class RulesParser
 	word forms given in specified WordNet synsets of "first." The parameter "indices"
 	specifies the indices of which specific synsets of "first" are to be checked.
 	*/
-	public boolean isSynonymOf(String first, String second, int... indices)
+	public static boolean isSynonymOf(String first, String second, int... indices)
 	{
 		Synset[] firstSynsetsAll = wordnet.getSynsets(first); //all synsets in wordnet of "first"
 		Synset[] firstSynsetsDesired; //this array will hold only the desired synsets of "first" (specified by "indices")
@@ -1166,7 +1168,7 @@ public class RulesParser
 	Tests if "first" is a hypernym of "second" by seeing if "first" is one of the
 	hypernyms listed in WordNet of any VerbSynset containing "second".
 	*/
-	public boolean isHypernymOf(String first, String second)
+	public static boolean isHypernymOf(String first, String second)
 	{
 		Synset[] secondSynsets = wordnet.getSynsets(second, SynsetType.VERB);
 		//we can only call getHypernyms() from VerbSynsets, not Synsets, so we have to do some casting

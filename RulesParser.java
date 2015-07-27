@@ -105,6 +105,10 @@ public class RulesParser
 			CoreMap current = sentences.get(i);
 			System.out.println("" + i + ": " + current.get(CoreAnnotations.TextAnnotation.class));
 		}
+
+		BoardParser boardParser = new BoardParser(this, sentences, lemmas, partsOfSpeech);
+		int[] dimensions = boardParser.parseDimensions();
+		System.out.println("rows: " + dimensions[0] + ", columns: " + dimensions[1]); //debugging
 		
 		parseMoveTypes();
 		parsePieceTypes();
@@ -1066,10 +1070,13 @@ public class RulesParser
 	*/
 	public boolean dominates(int sentenceIndex, int index1, int index2)
 	{
-		SemanticGraph graph = sentences.get(i).get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+		SemanticGraph graph = sentences.get(sentenceIndex).get(
+			SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
 
-		IndexedWord node1 = graph.getNodeByIndexSafe(index1);
-		IndexedWord node2 = graph.getNodeByIndexSafe(index2);
+		/*the words in the SemanticGraph are indexed from 1, but in our system they are indexed from 0 (since we 
+		use lemmas[][]); we must therefore add 1 to index1 and index2 when finding their nodes in the graph. */
+		IndexedWord node1 = graph.getNodeByIndexSafe(index1+1);
+		IndexedWord node2 = graph.getNodeByIndexSafe(index2+1);
 
 		if (node1 != null && node2 != null)
 			return graph.getPathToRoot(node2).contains(node1);

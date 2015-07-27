@@ -107,8 +107,7 @@ public class RulesParser
 		}
 
 		BoardParser boardParser = new BoardParser(this, sentences, lemmas, partsOfSpeech);
-		int[] dimensions = boardParser.parseDimensions();
-		System.out.println("rows: " + dimensions[0] + ", columns: " + dimensions[1]); //debugging
+		boardParser.parseBoard();
 		
 		parseMoveTypes();
 		parsePieceTypes();
@@ -1084,6 +1083,56 @@ public class RulesParser
 			return false;
 	}
 
+
+	/**
+	Given a List of Integers indices1, determines whether any of them dominate index2 in the semantic dependency graph. 
+	Returns true if any single one of them does, false if none of them do.
+	*/
+	public boolean dominates(int sentenceIndex, List<Integer> indices1, int index2)
+	{
+		for (int index1: indices1)
+		{
+			if (dominates(sentenceIndex, index1, index2))
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	Using CoreNLP's dependency parsing, determines if one word (index1) is the sibling of another word (index2) in the semantic 
+	dependency graph of the sentence with index sentenceIndex.
+	(Like dominates(), this method does not actually utilize the parse tree constructed by CoreNLP, since those are usually wrong - 
+	instead, it uses the semantic dependency graph, which is not exactly the same nor has exactly the same structure, but the concept
+	of sibling constituents roughly still applies.
+	Specifically, if node1 and node2 are siblings in the semantic graph, then node2 and node1 are both dependent on the same parent node.
+	Eg: in the sentence "the boy kicked the ball", "boy" and "ball" are siblings, being both dependent on "kicked".)
+	*/
+	public boolean isSibling(int sentenceIndex, int index1, int index2)
+	{
+		SemanticGraph graph = sentences.get(sentenceIndex).get(
+			SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+
+		/*the words in the SemanticGraph are indexed from 1, but in our system they are indexed from 0 (since we 
+		use lemmas[][]); we must therefore add 1 to index1 and index2 when finding their nodes in the graph. */
+		IndexedWord node1 = graph.getNodeByIndexSafe(index1+1);
+		IndexedWord node2 = graph.getNodeByIndexSafe(index2+1);
+
+		return graph.getSiblings(node1).contains(node2);
+	}
+
+	/**
+	Given a List of Integers, determines whether any of them are siblings with index2 in the semantic dependency graph. 
+	Returns true if any single one of them is, false if none of them are.
+	*/
+	public boolean isSibling(int sentenceIndex, List<Integer> indices1, int index2)
+	{
+		for (int index1: indices1)
+		{
+			if (isSibling(sentenceIndex, index1, index2))
+				return true;
+		}
+		return false;
+	}
 
 	/**
 	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",

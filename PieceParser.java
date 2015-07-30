@@ -614,17 +614,17 @@ public class PieceParser
 	{
 		//semantic dependency graph of sentence with index sentenceInd
 		SemanticGraph graph = sentences.get(sentenceInd).get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
-		ArrayList<Integer> indicesOfReach = new ArrayList<Integer>(1); //indices in sentenceInd of
+		ArrayList<Integer> indicesOfReach = new ArrayList<Integer>(1); //indices in sentenceInd of synonyms of reach or hyponyms of move
 
-		//iterate over all lemmas in current sentence (lemmas[sentenceInd]), finding any synonyms of reach
+		//iterate over all lemmas in current sentence (lemmas[sentenceInd]), finding any synonyms of reach or hyponyms of move
 		for (int i = 0; i < lemmas[sentenceInd].length; i++)
 		{
 			String lemma = lemmas[sentenceInd][i];
-			if (RulesParser.isSynonymOf("reach", lemma))
+			if (RulesParser.isSynonymOf("reach", lemma) || RulesParser.isHypernymOf("move", lemma))
 				indicesOfReach.add(i);
 		}
 
-		/* iterate over any indices of any synonym of reach (there is almost certainly only 1, but just in case), finding 
+		/* iterate over any indices of any synonym of reach/hyponyms of move (there is probably only 1, but just in case), finding 
 		those that head adverbial or adjectival subordinate clauses; all such indices will be stored in reachSubordClause */
 		ArrayList<Integer> reachSubordClause = new ArrayList<Integer>(1); 
 		for (int i: indicesOfReach)
@@ -647,6 +647,13 @@ public class PieceParser
 		
 		//dependencies for sentenceInd as a String[], each entry containing a single dependency String
 		String[] dependencies = graph.toString(SemanticGraph.OutputFormat.LIST).split("\n");
+
+		boolean isTransitionZone = false;
+		boolean isFurthestRow = false;
+		boolean isClosestRow = false;
+
+		boolean otherPlayer = false; //used for constructions like "if you reach the other player's side"
+
 		//iterate over all dependencies
 		for (int i = 1; i < dependencies.length; i++)
 		{
@@ -657,31 +664,79 @@ public class PieceParser
 			String lemma2 = lemmas[sentenceInd][index2-1];
 			String pos2 = partsOfSpeech[sentenceInd][index2-1];
 
+			// The following checks for adjectives modifying nouns
 			if (d.contains("amod(") && pos2.contains("JJ"))
 			{
+				//The following checks if the noun being modified is any of "row", "rank", "side", "edge", or "end"
 				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || lemma1.equals("edge") || lemma1.equals("end"))
 				{
+					/*The following checks if the modifying adjective is dominated by the subordinate clause predicates indexed by
+					reachSubordClause; that is, this checks if this modifying adjective is within the subordinate clause. */
 					if (parent.dominates(sentenceInd, reachSubordClause, index2))
 					{
+						/* The following checks if the modifying adjective is any synonym of any of the following: "furthest",
+						"opposite", "far", or "last". These all correspond to the furthest row being the transition zone. */
 						if (RulesParser.isSynonymOf("furthest", lemma2) || RulesParser.isSynonymOf("opposite", lemma2) || 
-							RulesParser.isSynonymOf("last", lemma2))
+							RulesParser.isSynonymOf("far", lemma2) || RulesParser.isSynonymOf("last", lemma2))
 						{
-							System.out.println("Transition zone for " + transitionPiece.getName() + " parsed: furthest row");
-							//do something else
+							isTransitionZone = true;
+							isFurthestRow = true;
 						}
-
-						else if (RulesParser.isSynonymOf("own", lemma2) || RulesParser.isSynonymOf("near", lemma2) || 
-							RulesParser.isSynonymOf("close", lemma2))
+						/* The following checks if the modifying adjective is any synonym of any of the following: "own",
+						"nearest", or "first". These all correspond to the closest row being the transition zone. */
+						if (RulesParser.isSynonymOf("own", lemma2) || RulesParser.isSynonymOf("nearest", lemma2) || 
+							RulesParser.isSynonymOf("first", lemma2))
 						{
-							System.out.println("Transition zone for " + transitionPiece.getName() + " parsed: closest row");
-							//do something else
+							isTransitionZone = true;
+							isClosestRow = true;
+						}
+					}
+				}
+				/* The following checks if the modified noun is any synonym of "player", and if the modifying adjective is any 
+				synonym of either "other" or "opposing". This is necessarily for constructions like "the other player's side". */
+				else if (RulesParser.isSynonymOf("player", lemma1) && 
+					(RulesParser.isSynonymOf("other", lemma2) || RulesParser.isSynonymOf("opposing", lemma2)))
+					otherPlayer = true;
+			}
+			//The following checks for nouns modified by possessive forms
+			else if (d.contains("nmod:poss("))
+			{
+				//The following checks if the possessed noun is any of "row", "rank", "side", "edge", or "end"
+				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || lemma1.equals("edge") || lemma1.equals("end"))
+				{
+					/*The following checks if the possessing noun is dominated by the subordinate clause predicates indexed by
+					reachSubordClause; that is, this checks if this possessing noun is within the subordinate clause. */
+					if (parent.dominates(sentenceInd, reachSubordClause, index2))
+					{
+						/* The following checks if the possessing noun is any synonym of "opponent". 
+						This corresponds to the furthest row being the transition zone. */
+						if (RulesParser.isSynonymOf("opponent", lemma2))
+						{
+							isTransitionZone = true;
+							isFurthestRow = true;
+						}
+						/* The following checks if the possessing noun is any synonym of "player", and if it is modified by
+						any adjective synonym of "other" (that is, if otherPlayer is true - we checked for this earlier.)
+						This corresponds to the furthest row being the transition zone. */
+						else if (otherPlayer && RulesParser.isSynonymOf("player", lemma2))
+						{
+							isTransitionZone = true;
+							isFurthestRow = true;
 						}
 					}
 				}
 			}
 		}
 
-
-
+		if (isTransitionZone)
+		{
+			System.out.print("Transition zone for " + transitionPiece.getName() + " parsed:");
+			if (isFurthestRow)
+				System.out.print(" furthest row");
+			if (isClosestRow)
+				System.out.print(" closest row");
+			System.out.println();
+			//transitionZones[][] handling
+		}
 	}
 }

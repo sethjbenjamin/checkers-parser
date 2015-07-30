@@ -61,6 +61,8 @@ public class ZRFWriter
 	{
 		try
 		{
+			writeMoveDefinitions();
+
 			writer.write("(game \n"); // open (game )
 			writer.write("\t" + "(title \"" + fileName + "\")" + "\n");
 
@@ -68,6 +70,7 @@ public class ZRFWriter
 			writeBoard();
 			writeBoardSetup();
 			writePieces();
+			writeEndConditions();
 
 			writer.write(")"); // close (game )
 		}
@@ -86,12 +89,40 @@ public class ZRFWriter
 
 	}
 
-	public void writeHeader()
+	public void writeMoveDefinitions()
 	{
+		//TODO: all of this is placeholders assuming every move to behave exactly like a regular move!
 		try
 		{
-			writer.write("(game \n"); 
-			writer.write("\t" + "(title \"" + fileName + "\")" + "\n");
+			for (Piece p: pieceTypes)
+			{
+				String name = p.getName().toUpperCase();
+				for (String move: moveTypes)
+				{
+					//open (define ), (name-move )
+					//TODO: this is assuming that you can not move into an occupied space! it already knows!
+					writer.write("(define " + name + "-" + move.toUpperCase() + "\t" + "($1 (verify empty?)" + "\n"); 
+					int numIfs = 0; //to know how many if statements have to be closed with a right parenthesis
+					for (Piece otherPiece: pieceTypes)
+					{
+						if (!p.equals(otherPiece) && !otherPiece.isDefault())
+						{
+							writer.write("\t" + "(if (in-zone? " + otherPiece.getName().toUpperCase() + "-transition)" + "\n");
+							writer.write("\t\t" + "(add " + otherPiece.getName().toUpperCase() + ")" + "\n");
+							writer.write("\t" + "else" + "\n");
+							numIfs++;
+						}
+					}
+					writer.write ("\t\t" + "add" + "\n"); 
+					writer.write ("\t");
+					for (int i = 0; i < numIfs; i++)
+						writer.write (")"); // close all the if's detailing transition zones
+					writer.write("\n");
+					writer.write("))" + "\n"); // close (name-move ) and (define ) 
+
+					writer.newLine();
+				}
+			}
 		}
 		catch (IOException e)
 		{
@@ -283,17 +314,28 @@ public class ZRFWriter
 				writer.write("\t\t" + "(name " + name + ")" + "\n"); //write the piece's name to zrf
 				//write the piece's moves to zrf
 				writer.write("\t\t" + "(moves" + "\n"); // open (moves )
-				for (String moveType: moveTypes)
+				for (String move: moveTypes)
 				{
-					writer.write("\t\t\t" + "(move-type " + moveType.toUpperCase() + ")" + "\n");
-					//TODO: HANDLE DIRECTIONS!
-
+					writer.write("\t\t\t" + "(move-type " + move.toUpperCase() + ")" + "\n");
+					ArrayList<Direction> motionTypes = p.getMotionTypes();
+					//TODO: this needs to be expanded!! also, MotionParser needs to actually learn that diagonal is exclusive
+					if (motionTypes.contains(Direction.DIAGONAL) && motionTypes.contains(Direction.FORWARD))
+					{
+						writer.write("\t\t\t" + "(" + name + "-" + move.toUpperCase() + " nw" + ")" + "\n");
+						writer.write("\t\t\t" + "(" + name + "-" + move.toUpperCase() + " ne" + ")" + "\n");
+					}
+					if (motionTypes.contains(Direction.DIAGONAL) && motionTypes.contains(Direction.BACKWARD))
+					{
+						writer.write("\t\t\t" + "(" + name + "-" + move.toUpperCase() + " sw" + ")" + "\n");
+						writer.write("\t\t\t" + "(" + name + "-" + move.toUpperCase() + " se" + ")" + "\n");
+					}
 					writer.newLine(); 
 				}
 				writer.write("\t\t" + ")" + "\n"); // close (moves )
 				writer.write("\t" + ")" + "\n"); // close (piece )
 
 			}
+			writer.newLine();
 
 		}
 		catch (IOException e)
@@ -303,17 +345,23 @@ public class ZRFWriter
 	}
 
 
-	/*public void writeEndConditions()
+	public void writeEndConditions()
 	{
+		//TODO: this is ALL placeholder stuff!
 		try
 		{
+			writer.write("\t\t" + "(loss-condition (");
+			for (int i = 1; i <= NUM_PLAYERS; i++)
+				writer.write("P" + i + " ");
+			writer.write(") stalemated )" + "\n");
 
+			writer.newLine();
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
-	}*/
+	}
 
 
 }

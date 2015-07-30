@@ -10,12 +10,12 @@ public class BoardParser
 {
 	private RulesParser parent;
 	private List<CoreMap> sentences;
-	//private Map<Integer, CorefChain> corefChains;
 	private String[][] lemmas; //lemmas[i][j] holds the lemma of the jth word in the ith sentence of the text
 	private String[][] partsOfSpeech; //partsOfSpeech[i][j] holds the POS of the jth word in the ith sentence of the text
 
 	private int[] dimensions;
-	//private String[][] board;
+	private String[][] initialBoard;
+	private String[][] transitionZones;
 
 	public BoardParser(RulesParser parent, List<CoreMap> sentences, String[][] lemmas, String[][] partsOfSpeech)
 	{
@@ -31,6 +31,7 @@ public class BoardParser
 	{
 		parseDimensions();
 	}
+
 
 	public void parseDimensions()
 	{
@@ -181,10 +182,12 @@ public class BoardParser
 			}
 		}
 		System.out.println("rows: " + dimensions[0] + ", columns: " + dimensions[1]); //debugging
+		initialBoard = new String[dimensions[0]][dimensions[1]];
+		transitionZones = new String[dimensions[0]][dimensions[1]];
 	}
 
-	public void parseInitialSetup
+	/*public void parseInitialSetup
 	{
-		
-	}
+
+	}*/
 }

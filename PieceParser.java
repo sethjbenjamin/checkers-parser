@@ -347,7 +347,7 @@ public class PieceParser
 				String pos1 = partsOfSpeech[i][index1-1];
 				String pos2 = partsOfSpeech[i][index2-1];
 
-				/*The following checks for subject dependencies in the current sentence.. */
+				/*The following checks for subject dependencies in the current sentence. */
 				if (d.contains("nsubj"))
 				{
 					/*The following checks if the sentence has any clause with any name of the currentPiece as its subject.
@@ -446,6 +446,8 @@ public class PieceParser
 				Piece transitionPiece = new Piece(transitionPieceName, currentPiece); 
 				// we have to add the index of the transition sentence to the transitionSentences field of currentPiece
 				currentPiece.addTransitionSentence(i, transitionPieceName);
+				// we also have to use this transition sentence to try to parse the transition zone for this new piece type
+				parseTransitionZones(transitionPiece, i); 
 				// now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
@@ -573,6 +575,10 @@ public class PieceParser
 				Piece previousPiece = new Piece(previousPieceName); 
 				//we have to set the previousType of currentPiece to this newly parsed piece
 				currentPiece.setPreviousType(previousPiece);
+				/*since we've determined that the ith sentence is a transition sentence describing the transition to currentPiece, 
+				we have to try to parse transition zones for currentPiece with it */
+				parseTransitionZones(currentPiece, i); 
+
 				//now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
@@ -602,5 +608,80 @@ public class PieceParser
 				}
 			}
 		}
+	}
+
+	public void parseTransitionZones(Piece transitionPiece, int sentenceInd)
+	{
+		//semantic dependency graph of sentence with index sentenceInd
+		SemanticGraph graph = sentences.get(sentenceInd).get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+		ArrayList<Integer> indicesOfReach = new ArrayList<Integer>(1); //indices in sentenceInd of
+
+		//iterate over all lemmas in current sentence (lemmas[sentenceInd]), finding any synonyms of reach
+		for (int i = 0; i < lemmas[sentenceInd].length; i++)
+		{
+			String lemma = lemmas[sentenceInd][i];
+			if (RulesParser.isSynonymOf("reach", lemma))
+				indicesOfReach.add(i);
+		}
+
+		/* iterate over any indices of any synonym of reach (there is almost certainly only 1, but just in case), finding 
+		those that head adverbial or adjectival subordinate clauses; all such indices will be stored in reachSubordClause */
+		ArrayList<Integer> reachSubordClause = new ArrayList<Integer>(1); 
+		for (int i: indicesOfReach)
+		{
+			IndexedWord reachNode = graph.getNodeByIndexSafe(i+1); 
+			//synonym of reach in the SemanticGraph (have to add 1 because SemanticGraph nodes are indexed from 1, not 0)
+			IndexedWord parentNode = graph.getParent(reachNode); //parent of reachNode
+
+			String relnName = null;
+			if (reachNode != null && parentNode != null)
+				relnName = graph.reln(parentNode, reachNode).getShortName();
+			/* relnName is the grammatical relation between the synonym of reach and its parent node in the semantic 
+			dependency graph (we want this to either be an adverbial or adjectival clause) */
+			if (relnName != null && (relnName.equals("advcl") || relnName.equals("acl:relcl")))
+				reachSubordClause.add(i);
+		}
+
+		/* we want to find adjectives denoting nearness or farness modifiyng "row" that are within the subordinate clause
+		in the sentence; that is, those that are dominated by any of the synonyms of reach indexed in reachSubordClause */
+		
+		//dependencies for sentenceInd as a String[], each entry containing a single dependency String
+		String[] dependencies = graph.toString(SemanticGraph.OutputFormat.LIST).split("\n");
+		//iterate over all dependencies
+		for (int i = 1; i < dependencies.length; i++)
+		{
+			String d = dependencies[i];
+			int index1 = RulesParser.isolateIndexFromDependency(d,1);
+			int index2 = RulesParser.isolateIndexFromDependency(d,2);
+			String lemma1 = lemmas[sentenceInd][index1-1];
+			String lemma2 = lemmas[sentenceInd][index2-1];
+			String pos2 = partsOfSpeech[sentenceInd][index2-1];
+
+			if (d.contains("amod(") && pos2.contains("JJ"))
+			{
+				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || lemma1.equals("edge") || lemma1.equals("end"))
+				{
+					if (parent.dominates(sentenceInd, reachSubordClause, index2))
+					{
+						if (RulesParser.isSynonymOf("furthest", lemma2) || RulesParser.isSynonymOf("opposite", lemma2) || 
+							RulesParser.isSynonymOf("last", lemma2))
+						{
+							System.out.println("Transition zone for " + transitionPiece.getName() + " parsed: furthest row");
+							//do something else
+						}
+
+						else if (RulesParser.isSynonymOf("own", lemma2) || RulesParser.isSynonymOf("near", lemma2) || 
+							RulesParser.isSynonymOf("close", lemma2))
+						{
+							System.out.println("Transition zone for " + transitionPiece.getName() + " parsed: closest row");
+							//do something else
+						}
+					}
+				}
+			}
+		}
+
+
+
 	}
 }

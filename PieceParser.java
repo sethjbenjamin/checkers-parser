@@ -17,15 +17,18 @@ public class PieceParser
 	private String[][] lemmas; //lemmas[i][j] holds the lemma of the jth word in the ith sentence of the text
 	private String[][] partsOfSpeech; //partsOfSpeech[i][j] holds the POS of the jth word in the ith sentence of the text
 
+	private String[][] transitionZones; //2d array representing board, initially null - parseTransitionZones will edit with proper zones
+
 	private ArrayList<String> moveTypes;
 	private ArrayList<Piece> pieceTypes;
 
-	public PieceParser(RulesParser parent, List<CoreMap> sentences, String[][] lemmas, String[][] partsOfSpeech)
+	public PieceParser(RulesParser parent, List<CoreMap> sentences, String[][] lemmas, String[][] partsOfSpeech, String[][] transitionZones)
 	{
 		this.parent = parent;
 		this.sentences = sentences;
 		this.lemmas = lemmas;
 		this.partsOfSpeech = partsOfSpeech;
+		this.transitionZones = transitionZones;
 	}
 
 	public void parsePieces()
@@ -62,6 +65,11 @@ public class PieceParser
 	public ArrayList<Piece> getPieceTypes()
 	{
 		return pieceTypes;
+	}
+
+	public String[][] getTransitionZones()
+	{
+		return transitionZones;
 	}
 
 	public void parseMoveTypes()
@@ -732,11 +740,69 @@ public class PieceParser
 		{
 			System.out.print("Transition zone for " + transitionPiece.getName() + " parsed:");
 			if (isFurthestRow)
+			{
 				System.out.print(" furthest row");
+				transitionPiece.setIsFurthestRow(true);
+			}
 			if (isClosestRow)
+			{
 				System.out.print(" closest row");
+				transitionPiece.setIsClosestRow(true);
+			}
 			System.out.println();
-			//transitionZones[][] handling
+
+			editTransitionZones(transitionPiece, isFurthestRow, isClosestRow);
 		}
+	}
+
+	public void editTransitionZones(Piece transitionPiece, boolean isFurthestRow, boolean isClosestRow)
+	{
+		/* This entire method is dependent on assuming there are only two players in the game, and that P1 starts 
+		from the top of the board and P2 starts from the bottom of the board (as assumed by ZRFWriter). */
+		String name = transitionPiece.getName();
+		if (isFurthestRow)
+		{  
+			//since P1 starts from the top, the furthest row is the bottom row (transitionZones[transitionZones.length-1])
+			for (int i = 0; i < transitionZones[transitionZones.length-1].length; i++)
+			{
+				String s = transitionZones[transitionZones.length-1][i];
+				if (s == null)
+					transitionZones[transitionZones.length-1][i] = "P1-" + name;
+				else
+					transitionZones[transitionZones.length-1][i] = s + "/" + "P1-" + name;
+			}
+			//since P2 starts from the bottom, the furthest row is the top row (transitionZones[0])
+			for (int i = 0; i < transitionZones[0].length; i++)
+			{
+				String s = transitionZones[0][i];
+				if (s == null)
+					transitionZones[0][i] = "P2-" + name;
+				else
+					transitionZones[0][i] = s + "/" + "P2-" + name;
+			}
+		}
+		if (isClosestRow)
+		{
+			//since P1 starts from the top, the closest row is the top row (transitionZones[0])
+			for (int i = 0; i < transitionZones[0].length; i++)
+			{
+				String s = transitionZones[0][i];
+				if (s == null)
+					transitionZones[0][i] = "P1-" + name;
+				else
+					transitionZones[0][i] = s + "/" + "P1-" + name;
+			}
+			//since P2 starts from the bottom, the closest row is the bottom row (transitionZones[transitionZones.length-1])
+			for (int i = 0; i < transitionZones[transitionZones.length-1].length; i++)
+			{
+				String s = transitionZones[transitionZones.length-1][i];
+				if (s == null)
+					transitionZones[transitionZones.length-1][i] = "P2-" + name;
+				else
+					transitionZones[transitionZones.length-1][i] = s + "/" + "P2-" + name;
+			}
+
+		}
+
 	}
 }

@@ -30,6 +30,8 @@ public class RulesParser
 	//WordNet 3.0 implementation using JAWS:
 	private static WordNetDatabase wordnet = WordNetDatabase.getFileInstance();
 
+	private String[][] initialBoard;
+	private String[][] transitionZones;
 	private ArrayList<String> moveTypes;
 	private ArrayList<Piece> pieceTypes;
 
@@ -108,12 +110,15 @@ public class RulesParser
 
 		BoardParser boardParser = new BoardParser(this, sentences, lemmas, partsOfSpeech);
 		boardParser.parseBoard();
+		this.initialBoard = boardParser.getInitialBoard();
+		this.transitionZones = boardParser.getTransitionZones();
 
-		PieceParser pieceParser = new PieceParser(this, sentences, lemmas, partsOfSpeech);
+		PieceParser pieceParser = new PieceParser(this, sentences, lemmas, partsOfSpeech, transitionZones);
 		pieceParser.parsePieces();
 
 		this.moveTypes = pieceParser.getMoveTypes();
 		this.pieceTypes = pieceParser.getPieceTypes();
+		this.transitionZones = pieceParser.getTransitionZones();
 	}
 
 	public ZRFWriter makeZRFWriter()

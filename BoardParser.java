@@ -32,6 +32,15 @@ public class BoardParser
 		parseDimensions();
 	}
 
+	public String[][] getInitialBoard()
+	{
+		return initialBoard;
+	}
+
+	public String[][] getTransitionZones()
+	{
+		return transitionZones;
+	}
 
 	public void parseDimensions()
 	{
@@ -80,8 +89,7 @@ public class BoardParser
 				{
 					dimensions[0] = rows;
 					dimensions[1] = columns;
-					System.out.println("rows: " + dimensions[0] + ", columns: " + dimensions[1]); //debugging
-					return;
+					break;
 				}
 			}
 

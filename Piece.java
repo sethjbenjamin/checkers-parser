@@ -13,7 +13,10 @@ public class Piece
 	private HashMap<Integer,String> transitionSentences; 
 	/* keys are indices of the sentences that describe when this piece type becomes another piece type.
 	the value associated with a certain key is the name of the piece this piece becomes in that sentence */
-
+	private boolean isFurthestRow;
+	private boolean isClosestRow;
+	/* the previous two fields indicate, in the case of this piece being a transition piece, whether the transition zone(s)
+	for this piece is the furthest row from the player and/or the closest row from the player*/
 
 	public Piece(String name)
 	{
@@ -22,6 +25,9 @@ public class Piece
 		equivalentTypes = new ArrayList<String>(1);
 		motionTypes = new ArrayList<Direction>(1);		
 		transitionSentences = new HashMap<Integer, String>(1);
+		isFurthestRow = false;
+		isClosestRow = false;
+
 	}
 
 	public Piece(String name, Piece previousType)
@@ -31,6 +37,8 @@ public class Piece
 		equivalentTypes = new ArrayList<String>(1);
 		motionTypes = new ArrayList<Direction>(1);
 		transitionSentences = new HashMap<Integer, String>(1);
+		isFurthestRow = false;
+		isClosestRow = false;
 	}
 
 	public String getName()
@@ -148,6 +156,22 @@ public class Piece
 			return transitionSentences.get(index).equals(pieceName);
 		else
 			return false;
+	}
+
+	/**
+	Mutator method for isFurthestRow.
+	*/
+	public void setIsFurthestRow(boolean isFurthestRow)
+	{
+		this.isFurthestRow = isFurthestRow;
+	}
+
+	/**
+	Mutator method for isClosestRow.
+	*/
+	public void setIsClosestRow(boolean isClosestRow)
+	{
+		this.isClosestRow = isClosestRow;
 	}
 
 	/**

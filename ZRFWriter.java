@@ -11,15 +11,17 @@ public class ZRFWriter
 	/* number of players is assumed to be 2, as most zrf games are 2-player (human vs. computer) 
 	and writing the sections for board symmetry depends on having only 2 players */
 
-	private int[] dimensions; //dimensions[0] is the number of rows, dimensions[1] is the number of columns
-	private String[][] board;
-	private boolean[][] boardColors; // true is black, false is white
-	private int numInitialRows; // the number of rows each player initially fills with pieces
-	private int numInitialPieces; //the number of pieces each player initially starts with
-	private ArrayList<String> moveTypes;
-	private ArrayList<Piece> pieceTypes;
+	private String[][] initialBoard; //as parsed by BoardParser
+	private String[][] transitionZones; //as parsed by BoardParser+PieceParser
+	private ArrayList<String> moveTypes; //as parsed by PieceParser
+	private ArrayList<Piece> pieceTypes; //as parsed by PieceParser+MotionParser
 
-	public ZRFWriter(String fileName, ArrayList<String> moveTypes, ArrayList<Piece> pieceTypes)
+	private int[] dimensions;
+	private String[][] zrfCoordinates;
+	private boolean[][] boardColors; // true is black, false is white
+
+	public ZRFWriter(String fileName, String[][] initialBoard, String[][] transitionZones, 
+		ArrayList<String> moveTypes, ArrayList<Piece> pieceTypes)
 	{
 		if (fileName.contains("/"))
 			this.fileName = fileName.substring(fileName.lastIndexOf("/") + 1, fileName.lastIndexOf("."));
@@ -41,15 +43,18 @@ public class ZRFWriter
 			e.printStackTrace();
 		}
 
-		//dimensions = new int[2];
-		dimensions = new int[]{8,8}; //placeholder (TODO)
-		numInitialRows = 3; //placeholder (TODO)
-		numInitialPieces = 12; //placeholder (TODO)
-		board = new String[dimensions[0]][dimensions[1]];
-		boardColors = new boolean[dimensions[0]][dimensions[1]];
-
+		this.initialBoard = initialBoard;
+		this.transitionZones = transitionZones;
 		this.moveTypes = moveTypes;
 		this.pieceTypes = pieceTypes;
+
+		this.dimensions = new int[2];
+		dimensions[0] = initialBoard.length;
+		dimensions[1] = initialBoard[0].length;
+
+		this.zrfCoordinates = new String[dimensions[0]][dimensions[1]];
+		this.boardColors = new boolean[dimensions[0]][dimensions[1]];
+
 	}
 
 	public void write()
@@ -124,7 +129,6 @@ public class ZRFWriter
 		{
 			writer.write("\t" + "(board" + "\n"); // open (board )
 			writer.write("\t\t" + "(grid" + "\n"); // open (grid )
-			//writer.write("start-rectangle 6 6 55 55"); TODO - is this necessary?
 
 			writer.write("\t\t\t" + "(dimensions" + "\n"); // open (dimensions )
 			//write columns to zrf
@@ -147,20 +151,20 @@ public class ZRFWriter
 			writer.write("\") ; rows" + "\n");
 			writer.write("\t\t\t" + ")" + "\n"); //close (dimensions )
 
-			/* initialize board[][] with the board coordinates used in the zrf, 
+			/* initialize zrfCoordinates[][] with the board coordinates used in the zrf, 
 			and boardColors[][] with the associated color values */
 			for (int i = 0; i < dimensions[0]; i++)
 			{
 				for (int j = 0; j < dimensions[1]; j++)
 				{
-					board[i][j] = String.valueOf(alphabet.charAt(dimensions[1]-j-1)) + (i+1);
+					zrfCoordinates[i][j] = String.valueOf(alphabet.charAt(dimensions[1]-j-1)) + (i+1);
 					if ((i+j) % 2 == 0) // alternating black and white pattern on checkerboard
 						boardColors[i][j] = false;
 					else
 						boardColors[i][j] = true;
 				}
 			}
-			/*at this point, board is a 2d string array containing all the individual coordinates of each square on the
+			/*at this point, zrfCoordinates is a 2d string array containing all the individual coordinates of each square on the
 			checkerboard, and boardColors is a 2d boolean array containing the individual colors of each square on the board
 			(false = white, true = black) */
 
@@ -169,7 +173,7 @@ public class ZRFWriter
 			writer.write("\t\t\t\t" + "(n 0 -1) (w -1 0) (s 0 1) (e 1 0)" + "\n"); //TODO: is this necessary or helpful at all?
 			writer.write("\t\t\t\t" + "(ne 1 -1) (nw -1 -1) (se 1 1) (sw -1 1)" + "\n");
 			//writer.write("\t\t\t\t" + "(nn 0 -2) (ww -2 0) (ss 0 2) (ee 2 0)"); 
-			// TODO: this might be assuming the defintions of move and jump! look up chess
+			// TODO: this might be assuming the adjacentness of move and jump! look up chess
 
 			writer.write("\t\t\t" + ")" + "\n"); // close (directions )
 			writer.write("\t\t" + ")" + "\n"); //close (grid )
@@ -178,7 +182,37 @@ public class ZRFWriter
 			//all of this block is dependent on NUM_PLAYERS being 2! if NUM_PLAYERS != 2 this no longer works
 			writer.write("\t\t" + "(symmetry P2 (n s) (s n) (ne sw) (sw ne) (nw se) (se nw))" + "\n");
 
-			//TODO: write zones! (after rules parser shows it is capable of figuring them out in any way)
+			//write transition zones
+			//iterate over all piece types
+			for (Piece p: pieceTypes)
+			{
+				String name = p.getName(); //name of piece
+				if (!p.isDefault()) //if piece is a transition piece,
+				{
+					//iterate over all players (each player has separate transition zone)
+					for (int playerNum = 1; playerNum <= NUM_PLAYERS; playerNum++)
+					{
+						writer.write("\t\t" + "(zone (name " + name.toUpperCase() + "-transition" + ")"); //open (zone )
+						writer.write(" (players P" + playerNum + ")" + "\n"); // open and close (players )
+						writer.write("\t\t\t" + "(positions"); //open (positions )
+						String transitionTrigger = "P" + playerNum + "-" + name; 
+						/* eg: "P2-king", meaning a square is part of the transition zone for P2's 
+						piece to become a king - this is how zones are stored in transitionZone */
+						//iterate over all squares in transitionZones, comparing their value to transitionTrigger
+						for (int i = 0; i < transitionZones.length; i++)
+						{
+							for (int j = 0; j < transitionZones[i].length; j++)
+							{
+								String square = transitionZones[i][j];
+								if (square != null && square.contains(transitionTrigger))
+									writer.write(" " + zrfCoordinates[i][j]);
+							}
+						}
+						writer.write(")" + "\n"); // close (positions )
+						writer.write("\t\t" + ")" + "\n"); //close (zone )
+					}
+				}
+			}
 
 			writer.write("\t" + ")" + "\n"); //close (board )
 
@@ -203,79 +237,29 @@ public class ZRFWriter
 					break;
 				}
 			}
-			String defaultName = defaultPiece.getName().toUpperCase(); //uppercase because we define pieces with uppercase names later in the zrf
+			String defaultName = defaultPiece.getName().toUpperCase(); //uppercase b/c we define pieces w/ uppercase names later in the zrf
 			writer.write("\t" + "(board-setup" + "\n"); //open (board-setup )
 
 			for (int playerNum = 1; playerNum <= NUM_PLAYERS; playerNum++)
 			{
-				writer.write("\t\t" + "(P" + playerNum + " (" + defaultName + " ");
-				//now we must determine what the initial positions of all the pieces are
+				writer.write("\t\t" + "(P" + playerNum + " (" + defaultName);
+				//using initialBoard, determine what the zrf-coordinates of the initial positions of each piece are
 
-				String[] initialPositions = new String[0]; 
-				/* initialized with length 0 so that if neither numInitialRows nor numInitialPieces are greater than zero
-				(meaning RulesParser was unable to determine any initial positions), the program doesn't crash when we later
-				try to iterate over initialPositions */
-				int i = 0;
-
-				int row, column;
-				if (playerNum == 1) //player 1
-					row = 0; //player 1's pieces start at the top and are filled downward
-				else //player 2 (depends on NUM_PLAYERS being 2 - if greater, the remaining player's pieces will be on top of player 2's pieces)
-					row = dimensions[0]-1; //player 2's pieces start at the bottom and are filled upward
-				column = 0;
-
-				/* All of the following blocks determinning initial positions of pieces are dependent on NUM_PLAYERS equaling 2!
-				They will misbehave if NUM_PLAYERS is greater than 2. */
-				if (numInitialRows > 0)
+				for (int i = 0; i < initialBoard.length; i++)
 				{
-					int numRowsFilled = 0; //the number of rows we have currently filled
-					initialPositions = new String[ numInitialRows * dimensions[0] / 2 ]; //TODO - hard coded with knowledge of only dark squares
-					while (numRowsFilled < numInitialRows)
+					for (int j = 0; j < initialBoard[i].length; j++)
 					{
-						//TODO - the following if statement is just hard-coded with the knowledge that the game happens only on dark squares!
-						if (boardColors[row][column]) // if this is a dark square,
+						String square = initialBoard[i][j]; // a single square on initialBoard
+						//square will either hold "null" or "P1", "P2," etc - so we extract the number and compare it to playerNum
+						if (square != null)
 						{
-							initialPositions[i] = board[row][column]; // consider it one of the initial positions
-							i++; // increment the running index of initialPositions
-						}
-						column++; //advance to the next column 
-						if (column >= dimensions[1]) // if we're out of columns, 
-						{
-							if (playerNum == 1) // for player 1,
-								row++; //move down to the next row
-							else // for player 2,
-								row--; //move up to the previous row
-							column = 0; //reset to first column of new row
-							numRowsFilled++;
-						}
-					}
-				}
-				else if (numInitialPieces > 0)
-				{
-					initialPositions = new String[numInitialPieces];
-					while (i < numInitialPieces)
-					{	
-						//TODO - the following if statement is just hard-coded with the knowledge that the game happens only on dark squares!
-						if (boardColors[row][column]) // if this is a dark square,
-						{
-							initialPositions[i] = board[row][column]; // consider it one of the initial positions
-							i++; // increment the running index of initialPositions
-						}
-						column++; //advance to the next column 
-						if (column >= dimensions[1]) // if we're out of columns, 
-						{
-							if (playerNum == 1) // for player 1,
-								row++; //move down to the next row
-							else // for player 2,
-								row--; //move up to the previous row
-							column = 0; //reset to first column of new row
+							int squareNumber = Integer.parseInt(square.substring(square.lastIndexOf("P")+1));
+							if (playerNum == squareNumber)
+								writer.write(" " + zrfCoordinates[i][j]);
 						}
 					}
 				}
 
-				for (String position: initialPositions)
-					if (position != null)
-						writer.write(position + " ");
 				writer.write(") )" + "\n");
 			}
 			writer.write("\t" + ")" + "\n"); // close (board-setup)

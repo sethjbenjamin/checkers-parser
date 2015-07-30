@@ -30,6 +30,7 @@ public class BoardParser
 	public void parseBoard()
 	{
 		parseDimensions();
+		parseInitialSetup();
 	}
 
 	public String[][] getInitialBoard()
@@ -194,8 +195,14 @@ public class BoardParser
 		transitionZones = new String[dimensions[0]][dimensions[1]];
 	}
 
-	/*public void parseInitialSetup
+	public void parseInitialSetup()
 	{
-
-	}*/
+		//TODO: THIS IS ALL HARDCODED - PLACEHOLDERS! Must be replaced with actual parsing from ruleset.
+		for (int i = 0; i < 3; i++)
+			for (int j = (i+1)%2; j < initialBoard[i].length; j+=2)
+				initialBoard[i][j] = "P1";
+		for (int i = initialBoard.length-1; i > initialBoard.length-4; i--)
+			for (int j = (i+1)%2; j < initialBoard[i].length; j+=2)
+				initialBoard[i][j] = "P2";
+	}
 }

@@ -123,7 +123,7 @@ public class RulesParser
 
 	public ZRFWriter makeZRFWriter()
 	{
-		ZRFWriter writer = new ZRFWriter(fileName, moveTypes, pieceTypes);
+		ZRFWriter writer = new ZRFWriter(fileName, initialBoard, transitionZones, moveTypes, pieceTypes);
 		return writer;
 	}
 

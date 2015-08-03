@@ -63,12 +63,9 @@ public class BoardParser
 					indicesOfBoard.add(new Integer(j));
 
 				//search for any word of the form MxN where M and N are integers
-				if (lemma.contains("x") || lemma.contains("X"))
+				if (lemma.contains("x")) //only need to check for lowercase, as all our lemmas have only lowercase symbols
 				{
-					int xIndex = Math.max(lemma.indexOf("x"), lemma.indexOf("X")); 
-					/* xIndex is now whichever index is not -1 - the word is very unlikely to contain both x and X 
-					(and if it does it will be thrown out when we try to call Integer.parseInt(), so that's fine */
-
+					int xIndex = lemma.indexOf("x"); 
 					String preX = lemma.substring(0, xIndex); //substring before the x
 					String postX = lemma.substring(xIndex+1); //substring after the x
 
@@ -85,16 +82,12 @@ public class BoardParser
 			}
 			if (rows != 0 && columns != 0)
 			{
-				//the following checks if MxN is dominated by "board" in the semantic dependency graph
-				if (parent.dominates(i, indicesOfBoard, numberIndex))
-				{
-					dimensions[0] = rows;
-					dimensions[1] = columns;
-					break;
-				}
+				dimensions[0] = rows;
+				dimensions[1] = columns;
+				break;
 			}
 
-			/* If we get to this point, then we haven't found a "MxN" dominated by "board" in this sentence, so we
+			/* If we get to this point, then we haven't found a "MxN" in this sentence, so we
 			explore the following phrases (with "M" and "N" as integers):
 			- "N square" (where "square" is necessarily dominated by or siblings with "board" in the semantic dependency graph)
 			- "M rows/ranks" "N columns/files" 

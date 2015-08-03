@@ -456,6 +456,14 @@ public class PieceParser
 				currentPiece.addTransitionSentence(i, transitionPieceName);
 				// we also have to use this transition sentence to try to parse the transition zone for this new piece type
 				parseTransitionZones(transitionPiece, i); 
+				/* Often, sentences we've parsed as transition sentences by detecting predicate nominatives and "renaming predicates" 
+				(known as, called) modified by now actually describe the transition zone in the previous sentence. For example:
+				When a piece reaches a space in the row on the opposite side of the board (the “King Me” row), its player picks up 
+				the piece and crowns it by twisting its base counter-clockwise, then sets it back on its space. It is now a King!"
+				The second sentence is the transition sentence, but the first sentence describes the transition zone. So,
+				we check for these predicates modified by now, and if so, call parseTransitionZones() on sentence i-1 as well. */
+				if ((isPredicateNominative || isRenamingPredicate) && isModifiedByNow)
+					parseTransitionZones(transitionPiece, i-1); 
 				// now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece

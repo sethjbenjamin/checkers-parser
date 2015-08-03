@@ -183,6 +183,14 @@ public class BoardParser
 				}
 			}
 		}
+
+		/* A fair number of checkers rulesets never specify the dimensions of the board; so if we are at this point and haven't 
+		parsed anything, we just assume it to be a standard 8x8 checkerboard (so that the rest of the program doesn't crash. */
+		if (dimensions[0] == 0)
+			dimensions[0] = 8;
+		if (dimensions[1] == 0)
+			dimensions[1] = 8;
+
 		System.out.println("rows: " + dimensions[0] + ", columns: " + dimensions[1]); //debugging
 		initialBoard = new String[dimensions[0]][dimensions[1]];
 		transitionZones = new String[dimensions[0]][dimensions[1]];

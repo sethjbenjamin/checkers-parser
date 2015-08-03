@@ -158,10 +158,10 @@ public class PieceParser
 				String d = dependencies[j]; //current dependency
 				int index1 = RulesParser.isolateIndexFromDependency(d,1);
 				int index2 = RulesParser.isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1-1];
-				String lemma2 = lemmas[i][index2-1];
-				String pos1 = partsOfSpeech[i][index1-1]; //POS of lemma1
-				String pos2 = partsOfSpeech[i][index2-1]; //POS of lemma2
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
+				String pos1 = partsOfSpeech[i][index1]; //POS of lemma1
+				String pos2 = partsOfSpeech[i][index2]; //POS of lemma2
 
 				/* The following if statement checks if lemma1 is:
 				- any of the move types in moveTypes
@@ -241,10 +241,10 @@ public class PieceParser
 				String d = dependencies[j];
 				int index1 = RulesParser.isolateIndexFromDependency(d,1);
 				int index2 = RulesParser.isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1-1];
-				String lemma2 = lemmas[i][index2-1];
-				String pos1 = partsOfSpeech[i][index1-1];
-				String pos2 = partsOfSpeech[i][index2-1];
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
+				String pos1 = partsOfSpeech[i][index1];
+				String pos2 = partsOfSpeech[i][index2];
 
 				// The following checks for noun appositive phrases modifying name, or being modified by name.
 				if (d.contains("appos("))
@@ -350,10 +350,10 @@ public class PieceParser
 				String d = dependencies[j];
 				int index1 = RulesParser.isolateIndexFromDependency(d,1);
 				int index2 = RulesParser.isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1-1];
-				String lemma2 = lemmas[i][index2-1];
-				String pos1 = partsOfSpeech[i][index1-1];
-				String pos2 = partsOfSpeech[i][index2-1];
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
+				String pos1 = partsOfSpeech[i][index1];
+				String pos2 = partsOfSpeech[i][index2];
 
 				/*The following checks for subject dependencies in the current sentence. */
 				if (d.contains("nsubj"))
@@ -508,9 +508,9 @@ public class PieceParser
 				String d = dependencies[j];
 				int index1 = RulesParser.isolateIndexFromDependency(d,1);
 				int index2 = RulesParser.isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1-1];
-				String lemma2 = lemmas[i][index2-1];
-				String pos2 = partsOfSpeech[i][index2-1];
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
+				String pos2 = partsOfSpeech[i][index2];
 
 				/* The following checks if the sentence contains either of the predicates "become" or "make", specifically taking any 
 				of the names of currentPiece as either its direct object or its open clausal complement. */
@@ -668,9 +668,9 @@ public class PieceParser
 			String d = dependencies[i];
 			int index1 = RulesParser.isolateIndexFromDependency(d,1);
 			int index2 = RulesParser.isolateIndexFromDependency(d,2);
-			String lemma1 = lemmas[sentenceInd][index1-1];
-			String lemma2 = lemmas[sentenceInd][index2-1];
-			String pos2 = partsOfSpeech[sentenceInd][index2-1];
+			String lemma1 = lemmas[sentenceInd][index1];
+			String lemma2 = lemmas[sentenceInd][index2];
+			String pos2 = partsOfSpeech[sentenceInd][index2];
 
 			// The following checks for adjectives modifying nouns
 			if (d.contains("amod(") && pos2.contains("JJ"))

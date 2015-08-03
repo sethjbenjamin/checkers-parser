@@ -81,7 +81,7 @@ public class MotionParser
 				SemanticGraph.OutputFormat.LIST).split("\n");
 
 			boolean isMotionSentence = false;
-			int index = -1;
+			int sentenceIndex = -1;
 
 			boolean isNameCompounded = false;
 			int compoundedNounIndex = -1;
@@ -92,10 +92,10 @@ public class MotionParser
 				String d = dependencies[j];
 				int index1 = RulesParser.isolateIndexFromDependency(d,1);
 				int index2 = RulesParser.isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1-1];
-				String lemma2 = lemmas[i][index2-1];
-				String pos1 = partsOfSpeech[i][index1-1];
-				String pos2 = partsOfSpeech[i][index2-1];
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
+				String pos1 = partsOfSpeech[i][index1];
+				String pos2 = partsOfSpeech[i][index2];
 
 				/* The following if block checks if one of the names of p is a either a modifier or modified in a noun compound. 
 				This matters because sometimes  a noun compound, of which the current name of the piece is the modifying noun, is used 
@@ -132,7 +132,7 @@ public class MotionParser
 					if (p.isAnyName(lemma2))
 					{
 						isMotionSentence = true;
-						index = i;
+						sentenceIndex = i;
 					}
 					//the following checks if the predicate's argument is a pronoun
 					else if (pos2.equals("PRP"))
@@ -145,7 +145,7 @@ public class MotionParser
 						if (p.isAnyName(antecedent) && !p.isTransitionSentence(i) && !p.isTransitionSentence(i-1))
 						{
 							isMotionSentence = true;
-							index = i;
+							sentenceIndex = i;
 						}
 						/* In the case of the following sentences:
 						"When a checker reaches the row on the farthest edge from the player, the checker becomes a king. It may 
@@ -161,7 +161,7 @@ public class MotionParser
 						else if (previousType != null && previousType.isAnyName(antecedent) && previousType.isTransitionSentence(i-1, name))
 						{
 							isMotionSentence = true;
-							index = i; 
+							sentenceIndex = i; 
 						}
 					}
 					/* In case of one of the names of currentPiece being a modifier in a noun compound (that is, if 
@@ -170,7 +170,7 @@ public class MotionParser
 					if (isNameCompounded && index2 == compoundedNounIndex)
 					{
 						isMotionSentence = true;
-						index = i;
+						sentenceIndex = i;
 					}
 				}
 			}
@@ -186,7 +186,7 @@ public class MotionParser
 					if (lemmas[i][j].equals("move") && partsOfSpeech[i][j].charAt(0) == 'N')
 					{
 						isMotionSentence = true;
-						index = i;
+						sentenceIndex = i;
 					}
 				}
 			}
@@ -199,7 +199,7 @@ public class MotionParser
 				if (previousType.isTransitionSentence(i, name))
 				{
 					isMotionSentence = true;
-					index = i;
+					sentenceIndex = i;
 				}
 			}
 
@@ -210,10 +210,10 @@ public class MotionParser
 			- the sentence is not a transition sentence for p */
 			if (isMotionSentence && !p.isTransitionSentence(i))
 			{
-				if (!indices.contains(index)) //also, we don't want to add multiple of the same index
+				if (!indices.contains(sentenceIndex)) //also, we don't want to add multiple of the same index
 				{
-					indices.add(index);
-					System.out.println("Motion sentence index for " + name + ": " + index);
+					indices.add(sentenceIndex);
+					System.out.println("Motion sentence index for " + name + ": " + sentenceIndex);
 				}
 			}
 		}
@@ -245,9 +245,9 @@ public class MotionParser
 				String d = dependencies[j];
 				int index1 = RulesParser.isolateIndexFromDependency(d, 1); 
 				int index2 = RulesParser.isolateIndexFromDependency(d, 2); 
-				String lemma1 = lemmas[i][index1-1]; 
-				String lemma2 = lemmas[i][index2-1]; 
-				String pos1 = partsOfSpeech[i][index1-1];
+				String lemma1 = lemmas[i][index1]; 
+				String lemma2 = lemmas[i][index2]; 
+				String pos1 = partsOfSpeech[i][index1];
 
 				if (d.contains("neg("))
 					negatedWords.add(index1);

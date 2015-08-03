@@ -119,6 +119,8 @@ public class RulesParser
 		this.moveTypes = pieceParser.getMoveTypes();
 		this.pieceTypes = pieceParser.getPieceTypes();
 		this.transitionZones = pieceParser.getTransitionZones();
+
+		parseEndConditions();
 	}
 
 	public ZRFWriter makeZRFWriter()
@@ -127,7 +129,6 @@ public class RulesParser
 		return writer;
 	}
 
-	
 
 	/**
 	Uses CoreNLP's dcoref system to determine the antecedent of an anaphor. Necessarily returns a noun - either returns the head word
@@ -137,7 +138,7 @@ public class RulesParser
 	public String determineAntecedent(int sentenceIndex, int wordIndex)
 	{
 		//sentence indices start at 0 for field "sentences" / for parameter sentenceIndex, but start at 1 for the corefchain
-		// word indices start at 1
+		// word indices start at 0 for parameter wordIndex, but start at 1 for the corefchain
 		//iterate over all CorefChains
 		for (Map.Entry<Integer, CorefChain> entry: corefChains.entrySet())
 		{
@@ -151,7 +152,8 @@ public class RulesParser
 					//tokens is a list of the words in the current sentence
 					List<CoreLabel> tokens = sentences.get(mention.sentNum - 1).get(CoreAnnotations.TokensAnnotation.class);
 					//if the head of the referring NP is the anaphor we are trying to determine the antecedent of,
-					if (mention.headIndex == wordIndex) // (we test this by comparing their indices in the sentence)
+					//subtract 1 because the corefchain word indices start at 1 and ours start at 0
+					if (mention.headIndex - 1 == wordIndex) // (we test this by comparing their indices in the sentence)
 					{
 						/*then we get the "representative mention" phrase - that is, what CoreNLP thinks is the
 						R-expression that refers to the antecedent, as opposed to an anaphor - and return the lemma of its head word */
@@ -260,7 +262,9 @@ public class RulesParser
 
 	/**
 	Given a dependency string of the form: "dependency(word1-index1, word2-index2)",
-	this method isolates and returns either "index1" or "index2", depending on if whichIndex equals 1 or 2 respectively.
+	this method isolates and returns either index1-1 or index2-1, depending on if whichIndex equals 1 or 2 respectively.
+	Decrements the returned index because the indices in the dependency string are indexed from 1, and we wish for them to be 
+	indexed from 0.
 	Returns -1 if whichWord does not equal 1 or 2.
 	*/
 	public static int isolateIndexFromDependency(String dependency, int whichIndex)
@@ -276,7 +280,7 @@ public class RulesParser
 				try
 				{
 					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
-					return isolatedIndex;
+					return isolatedIndex-1; // isolatedIndex-1, b/c the dependency strings are indexed from 1 and our system is from 0
 				}
 				catch (NumberFormatException e)
 				{
@@ -289,7 +293,7 @@ public class RulesParser
 					while (dependency.charAt(endIndex-1) == '\'')
 						endIndex--;
 					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex)); 
-					return isolatedIndex;
+					return isolatedIndex-1; // isolatedIndex-1, b/c the dependency strings are indexed from 1 and our system is from 0
 				}
 			case 2: 
 				startIndex = dependency.lastIndexOf("-") + 1; //index in dependency string of the first digit of the second index
@@ -297,14 +301,14 @@ public class RulesParser
 				try
 				{
 					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex));
-					return isolatedIndex;
+					return isolatedIndex-1; // isolatedIndex-1, b/c the dependency strings are indexed from 1 and our system is from 0
 				}
 				catch (NumberFormatException e)
 				{
 					while (dependency.charAt(endIndex-1) == '\'')
 						endIndex--;
 					isolatedIndex = Integer.parseInt(dependency.substring(startIndex, endIndex)); 
-					return isolatedIndex;
+					return isolatedIndex-1; // isolatedIndex-1, b/c the dependency strings are indexed from 1 and our system is from 0
 				}
 			default: //whichIndex can only equal 1 or 2, because a dependency string can only contain 2 tokens (and therefore 2 indices)
 				return -1; //error value - index in the sentence can never -1

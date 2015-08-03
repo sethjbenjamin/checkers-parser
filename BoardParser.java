@@ -115,12 +115,12 @@ public class BoardParser
 				String d = dependencies[j];
 				int index1 = RulesParser.isolateIndexFromDependency(d,1);
 				int index2 = RulesParser.isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1-1];
-				String lemma2 = lemmas[i][index2-1];
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
 
 				if (d.contains("nummod("))
 				{
-					String number2 = sentence.get(CoreAnnotations.TokensAnnotation.class).get(index2-1).get(
+					String number2 = sentence.get(CoreAnnotations.TokensAnnotation.class).get(index2).get(
 						CoreAnnotations.NormalizedNamedEntityTagAnnotation.class);
 					if (number2 != null) // if NER has recognized the second word in the dependency to be a number value
 					{
@@ -130,7 +130,7 @@ public class BoardParser
 							//the following checks if the word being modified by a number is "square"
 							if (lemma1.equals("square"))
 							{	//check if "square" is either dominated by or siblings with "board" in the semantic dependency graph
-								if (parent.dominates(i, indicesOfBoard, index1-1) || parent.isSibling(i, indicesOfBoard, index1-1))
+								if (parent.dominates(i, indicesOfBoard, index1) || parent.isSibling(i, indicesOfBoard, index1))
 								{
 									int sqrtValue = (int) Math.sqrt(value); // integer value of the number
 									if (sqrtValue > dimensions[0] && sqrtValue > dimensions[1])

@@ -2,7 +2,7 @@ Object.
 The object of the game is to take all your opponent's pieces or place him in a position where he or she can no longer make any moves.
 Turns.
 Players shall take turns at starting the game. The visitor shall start the first game.
-Obligation to move
+Obligation to move.
 A player has to move, a player who can no longer move loses.
 Moving pieces.
 All pieces, men and kings, can move only diagonally. Pieces can only move to adjacent unoccupied black squares except when making a jump (see below). Men may only move and jump forwards while kings may move and jump forwards as well as backwards.

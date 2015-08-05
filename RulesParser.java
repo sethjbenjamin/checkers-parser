@@ -34,6 +34,7 @@ public class RulesParser
 	private String[][] transitionZones;
 	private ArrayList<String> moveTypes;
 	private ArrayList<Piece> pieceTypes;
+	private ArrayList<EndCondition> endConditions;
 
 
 	public RulesParser(String fileName)
@@ -125,10 +126,195 @@ public class RulesParser
 
 	public ZRFWriter makeZRFWriter()
 	{
-		ZRFWriter writer = new ZRFWriter(fileName, initialBoard, transitionZones, moveTypes, pieceTypes);
+		ZRFWriter writer = new ZRFWriter(fileName, initialBoard, transitionZones, moveTypes, pieceTypes, endConditions);
 		return writer;
 	}
 
+
+	public void parseEndConditions()
+	{
+		this.endConditions = new ArrayList<EndCondition>(1);
+
+		ArrayList<Integer> endConditionSentences = new ArrayList<Integer>(1);
+		for (int i = 0; i < sentences.size(); i++)
+		{
+			for (String lemma: lemmas[i])
+			{
+				if (lemma.equals("win") || lemma.equals("lose") || RulesParser.isSynonymOf("tie", lemma, 6) ||
+					RulesParser.isSynonymOf("end", lemma))
+					endConditionSentences.add(i);
+			}
+		}
+
+		for (int i: endConditionSentences)
+		{
+			//current sentence
+			CoreMap sentence = sentences.get(i);
+			//semantic dependency graph of current sentence
+			SemanticGraph graph = sentence.get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+			//dependencies for current sentence as a String[], each entry containing a single dependency String
+			String[] dependencies = graph.toString(SemanticGraph.OutputFormat.LIST).split("\n");
+
+			boolean isWin = false;
+			boolean isLose = false;
+			boolean isDraw = false;
+
+			boolean isOppositeType = false;
+
+			boolean isStalemated = false;
+			boolean isPiecesRemaining = false;
+
+			int quantifier = -1;
+
+			int matrixPredicate = -1;
+			ArrayList<Integer> subordinatePredicates = new ArrayList<Integer>(1);
+			ArrayList<Integer> negatedWords = new ArrayList<Integer>(1);
+
+			String firstDep = dependencies[0];
+			matrixPredicate = isolateIndexFromDependency(firstDep, 2);
+
+			/* We have to iterate over all dependencies two separate times. We first do this to determine the indices
+			of all subordinate predicates and negated words. Later, we analyze the other elements of the sentence, 
+			using the already-determined subordinate predicates and negated words in our analysis. */
+			for (int j = 1; j < dependencies.length; j++)
+			{
+				String d = dependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
+				String pos1 = partsOfSpeech[i][index1];
+				String pos2 = partsOfSpeech[i][index2];
+
+				if (d.contains("advcl("))
+					subordinatePredicates.add(index2);
+				else if (d.contains("acl:") || (d.contains("acl(")))
+					subordinatePredicates.add(index2);
+				else if (d.contains("neg("))
+					negatedWords.add(index1);
+				else if (d.contains("dep(") && lemma1.equals("not"))
+					negatedWords.add(index2);
+			}
+
+			//iterate over all dependencies a second time
+			for (int j = 1; j < dependencies.length; j++)
+			{
+				String d = dependencies[j];
+				int index1 = isolateIndexFromDependency(d,1);
+				int index2 = isolateIndexFromDependency(d,2);
+				String lemma1 = lemmas[i][index1];
+				String lemma2 = lemmas[i][index2];
+				String pos1 = partsOfSpeech[i][index1];
+				String pos2 = partsOfSpeech[i][index2];
+
+				//check for "move" as a verb being negated, or a modifier modifying it being negated, within the subordinate clause
+				if (lemma1.equals("move") && pos1.charAt(0) == 'V')
+				{
+					/* check for the verb "move" being negated within the subordinate clause 
+					(meaning it is either dominated by a subordinate predicate or is one of them) */
+					if (negatedWords.contains(index1) && 
+						(dominates(i, subordinatePredicates, index1) || subordinatePredicates.contains(index1)))
+						isStalemated = true;
+					//check for a modifier of the verb being negated within the subordinate clause
+					else if (negatedWords.contains(index2) && dominates(i, subordinatePredicates, index2))
+						isStalemated = true;
+				}
+				/* check for "move" as a noun being negated, or the verb taking it as an argument 
+				being negated, within the subordinate clause */
+				else if (lemma2.equals("move") && pos2.charAt(0) == 'N') 
+				{
+					//check for the noun "move" being negated within the subordinate clause
+					if (negatedWords.contains(index2) && dominates(i, subordinatePredicates, index2))
+						isStalemated = true;
+					/* check for the verb taking it as an argument being negated within the subordinate clause 
+					(meaning it is either dominated by a subordinate predicate or is one of them) */
+					else if (negatedWords.contains(index1) && 
+						(dominates(i, subordinatePredicates, index1) || subordinatePredicates.contains(index1)))
+						isStalemated = true;
+				}
+				//TODO: handle pieces-remaining!
+
+
+				if (d.contains("amod(") && (lemma2.equals("other") || lemma2.equals("opposing")) && 
+					dominates(i, subordinatePredicates, index2))
+					isOppositeType = true;
+				else if (isSynonymOf("opponent", lemma2) && dominates(i, subordinatePredicates, index2))
+					isOppositeType = true;
+				else if (isSynonymOf("opponent", lemma1) && dominates(i, subordinatePredicates, index1))
+					isOppositeType = true;
+			}
+
+			//determine type of end condition (win, lose, draw)
+			if (lemmas[i][matrixPredicate].equals("win"))
+			{
+				if (isOppositeType)
+					isLose = true;
+				else
+					isWin = true;
+			}
+			else if (lemmas[i][matrixPredicate].equals("lose"))
+			{
+				if (isOppositeType)
+					isWin = true;
+				else
+					isLose = true;
+			}
+			else
+			{
+				/* TODO: handle other situations, where the matrix pred is not the end type
+				(eg: To win, you must capture all the other player's pieces.) */
+			}
+
+			//TODO: REMOVE! ALL debugging
+			System.out.println("Sentence " + i + " isWin: " + isWin);
+			System.out.println("Sentence " + i + " isLose: " + isLose);
+			System.out.println("Sentence " + i + " isOppositeType: " + isOppositeType);
+			System.out.println("Sentence " + i + " isStalemated: " + isStalemated);
+
+			if (isWin)
+			{
+				if (isStalemated)
+				{
+					endConditions.add(new EndCondition(EndCondition.WIN, EndCondition.STALEMATED));
+					System.out.println("Win condition parsed: stalemated in sentence " + i);
+				}
+				if (isPiecesRemaining)
+				{
+					endConditions.add(new EndCondition(EndCondition.WIN, EndCondition.PIECES_REMAINING, quantifier));
+					System.out.println("Win condition parsed: pieces remaining = " + quantifier + " in sentence " + i);
+				}
+			}
+			if (isLose)
+			{
+				if (isStalemated)
+				{
+					endConditions.add(new EndCondition(EndCondition.LOSE, EndCondition.STALEMATED));
+					System.out.println("Lose condition parsed: stalemated in sentence " + i);
+				}
+				if (isPiecesRemaining)
+				{
+					endConditions.add(new EndCondition(EndCondition.LOSE, EndCondition.PIECES_REMAINING, quantifier));
+					System.out.println("Lose condition parsed: pieces remaining = " + quantifier + " in sentence " + i);
+				}
+			}
+			if (isDraw)
+			{
+				if (isStalemated)
+				{
+					endConditions.add(new EndCondition(EndCondition.DRAW, EndCondition.STALEMATED));
+					System.out.println("Draw condition parsed: stalemated in sentence " + i);
+				}
+				if (isPiecesRemaining)
+				{
+					endConditions.add(new EndCondition(EndCondition.DRAW, EndCondition.PIECES_REMAINING, quantifier));
+					System.out.println("Draw condition parsed: pieces remaining = " + quantifier + "in sentence " + i);
+				}
+			}
+			
+		}
+	}
+
+	
 
 	/**
 	Uses CoreNLP's dcoref system to determine the antecedent of an anaphor. Necessarily returns a noun - either returns the head word

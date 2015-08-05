@@ -15,13 +15,14 @@ public class ZRFWriter
 	private String[][] transitionZones; //as parsed by BoardParser+PieceParser
 	private ArrayList<String> moveTypes; //as parsed by PieceParser
 	private ArrayList<Piece> pieceTypes; //as parsed by PieceParser+MotionParser
+	private ArrayList<EndCondition> endConditions; //as parsed by RulesParser
 
 	private int[] dimensions;
 	private String[][] zrfCoordinates;
 	private boolean[][] boardColors; // true is black, false is white
 
 	public ZRFWriter(String fileName, String[][] initialBoard, String[][] transitionZones, 
-		ArrayList<String> moveTypes, ArrayList<Piece> pieceTypes)
+		ArrayList<String> moveTypes, ArrayList<Piece> pieceTypes, ArrayList<EndCondition> endConditions)
 	{
 		if (fileName.contains("/"))
 			this.fileName = fileName.substring(fileName.lastIndexOf("/") + 1, fileName.lastIndexOf("."));
@@ -47,6 +48,7 @@ public class ZRFWriter
 		this.transitionZones = transitionZones;
 		this.moveTypes = moveTypes;
 		this.pieceTypes = pieceTypes;
+		this.endConditions = endConditions;
 
 		this.dimensions = new int[2];
 		dimensions[0] = initialBoard.length;
@@ -347,13 +349,28 @@ public class ZRFWriter
 
 	public void writeEndConditions()
 	{
-		//TODO: this is ALL placeholder stuff!
 		try
 		{
-			writer.write("\t\t" + "(loss-condition (");
-			for (int i = 1; i <= NUM_PLAYERS; i++)
-				writer.write("P" + i + " ");
-			writer.write(") stalemated )" + "\n");
+			for (EndCondition ec: endConditions)
+			{
+				writer.write("\t" + "("); // open (end-condition )
+				String type = ec.getType(); // have to determine what type of end condition this is (win, lose, draw)
+				if (type.equals(EndCondition.WIN)) // type is win
+					writer.write("win");
+				else if (type.equals(EndCondition.LOSE)) // type is lose
+					writer.write("loss");
+				else // type is draw
+					writer.write("draw");
+				writer.write("-condition (");
+
+				// The following assumes the end conditions are the same for all players; that is a limitation of this system
+				for (int i = 1; i <= NUM_PLAYERS; i++)
+					writer.write("P" + i + " ");
+				writer.write(ec.getCondition() + " "); // write the condition (either stalemated or pieces-remaining)
+				if (ec.hasQuantifier()) // if this end condition has a quantifier (like pieces-remaining 0)
+					writer.write(ec.getQuantifier()); // write it
+				writer.write(")" + "\n");
+			}
 
 			writer.newLine();
 		}

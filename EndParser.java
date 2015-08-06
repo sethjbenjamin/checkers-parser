@@ -45,8 +45,8 @@ public class EndParser
 		{
 			for (String lemma: lemmas[i])
 			{
-				if (lemma.equals("win") || lemma.equals("lose") || RulesParser.isSynonymOf("tie", lemma, 6) ||
-					RulesParser.isSynonymOf("end", lemma))
+				if ((lemma.equals("win") || lemma.equals("lose") || RulesParser.isSynonymOf("tie", lemma, 6) ||
+					RulesParser.isSynonymOf("end", lemma)) && !endConditionSentences.contains(i))
 					endConditionSentences.add(i);
 			}
 		}
@@ -154,15 +154,31 @@ public class EndParser
 					if (isStalemated && isOpponentArgument(i, index1))
 						isOppositeType = true;
 				}
-				else if (pos1.charAt(0) == 'V' && (lemma1.equals("capture") || lemma1.equals("remove")))
+				else if (pos1.charAt(0) == 'V' && pos2.equals("DT") && lemma2.equals("all"))
 				{
-					if (pos2.charAt(0) == 'N' && isPieceName(lemma2))
+					//check for a phrase like "all of the pieces" as the argument of the predicate			
+					quantifier = 0;
+					IndexedWord node2 = graph.getNodeByIndexSafe(index2+1);
+					Set<IndexedWord> children = null;
+					if (node2 != null)
+						children = graph.getChildren(node2);
+					if (children != null)
 					{
+						for (IndexedWord child: children)
+						{
+							int childIndex = child.index()-1;
+							if (partsOfSpeech[i][childIndex].charAt(0) == 'N' && isPieceName(lemmas[i][childIndex]))
+							{
+								//TODO: this does NOT check if the phrase is within subordinate clause - either add here or remove elsewhere
+								if (lemma1.equals("capture") || lemma1.equals("remove") || lemma1.equals("lose"))
+									isPiecesRemaining = true;
+								else if (RulesParser.isSynonymOf("block", lemma1))
+									isStalemated = true;
 
-					}
-					else if (pos2.equals("DT") && lemma2.equals("all"))
-					{
-						quantifier = 0;
+								if ((isPiecesRemaining || isStalemated) && isOpponentPossessor(i, childIndex))
+									isOppositeType = true;
+							}
+						}
 					}
 				}
 
@@ -194,6 +210,7 @@ public class EndParser
 			System.out.println("Sentence " + i + " isLose: " + isLose);
 			System.out.println("Sentence " + i + " isOppositeType: " + isOppositeType);
 			System.out.println("Sentence " + i + " isStalemated: " + isStalemated);
+			System.out.println("Sentence " + i + " isPiecesRemaining: " + isPiecesRemaining);
 
 			if (isWin)
 			{
@@ -249,11 +266,13 @@ public class EndParser
 			SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
 		//check for any of the arguments of the verb being any phrase denoting the other player
 		IndexedWord predicateNode = graph.getNodeByIndexSafe(predicateIndex+1); //+1 because SemanticGraph nodes are indexed from 1
-		Set<IndexedWord> children = graph.getChildren(predicateNode);
+		Set<IndexedWord> children = null;
+		if (predicateNode != null) 
+			children = graph.getChildren(predicateNode);
 		for (IndexedWord child: children)
 		{
 			String childLemma = lemmas[sentenceIndex][child.index()-1]; //the lemma of the word each child node represents
-			String childPOS = partsOfSpeech[sentenceIndex][child.index()-1]; // POS of the word each child node presents
+			String childPOS = partsOfSpeech[sentenceIndex][child.index()-1]; // POS of the word each child node represents
 			//in both of the previous Strings, we subtract 1 from child.index() b/c SemanticGraph nodes are indexed from 1
 			if (RulesParser.isSynonymOf("opponent", childLemma))
 				return true;
@@ -275,8 +294,48 @@ public class EndParser
 		return false;
 	}
 
+	public boolean isOpponentPossessor(int sentenceIndex, int nounIndex)
+	{
+		//semantic dependency graph of the sentence
+		SemanticGraph graph = sentences.get(sentenceIndex).get(
+			SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+		//check for any of the arguments of the verb being any phrase denoting the other player
+		IndexedWord nounNode = graph.getNodeByIndexSafe(nounIndex+1); //+1 because SemanticGraph nodes are indexed from 1
+		Set<IndexedWord> possessors = null;
+		if (nounNode != null) 
+			possessors = graph.getChildrenWithReln(nounNode, UniversalEnglishGrammaticalRelations.POSSESSION_MODIFIER);
+		for (IndexedWord possessor: possessors)
+		{
+			String possessorLemma = lemmas[sentenceIndex][possessor.index()-1]; //the lemma of the word possessing the noun
+			String possessorPOS = partsOfSpeech[sentenceIndex][possessor.index()-1]; //POS of the word possessing the noun
+			//in both of the previous Strings, we subtract 1 from possessor.index() b/c SemanticGraph nodes are indexed from 1
+			if (RulesParser.isSynonymOf("opponent", possessorLemma) || possessorLemma.equals("other"))
+				return true;
+			else if (possessorPOS.charAt(0) == 'N')
+			{
+				Set<IndexedWord> adjectives = graph.getChildrenWithReln(possessor, 
+					UniversalEnglishGrammaticalRelations.ADJECTIVAL_MODIFIER); // all adjective modifiers of child
+				for (IndexedWord adjective: adjectives)
+				{
+					String adjLemma = lemmas[sentenceIndex][adjective.index()-1];
+					if (adjLemma.equals("other") || adjLemma.equals("opposing"))
+						return true;
+				}
+
+			}
+			//TODO: handle pronouns?
+		}
+
+		return false;
+	}
+
+	/**
+	Checks if a String (str) is one of the piece names in pieceTypes, or just the word "piece"
+	*/
 	public boolean isPieceName(String str)
 	{
+		if (str.equals("piece"))
+			return true;
 		for (Piece p: pieceTypes)
 		{
 			if (p.getName().equals(str))

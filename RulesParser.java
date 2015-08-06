@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import edu.stanford.nlp.dcoref.CorefChain;
 import edu.stanford.nlp.dcoref.CorefCoreAnnotations;
@@ -13,6 +14,7 @@ import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.pipeline.*;
 import edu.stanford.nlp.semgraph.SemanticGraph;
 import edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations;
+import edu.stanford.nlp.trees.*;
 import edu.stanford.nlp.util.*;
 
 import edu.smu.tspell.wordnet.*;
@@ -207,17 +209,26 @@ public class RulesParser
 				String pos1 = partsOfSpeech[i][index1];
 				String pos2 = partsOfSpeech[i][index2];
 
-				//check for "move" as a verb being negated, or a modifier modifying it being negated, within the subordinate clause
+				//check for "move" as a verb being negated, or a modifier/argument of it being negated, within the subordinate clause
 				if (lemma1.equals("move") && pos1.charAt(0) == 'V')
 				{
 					/* check for the verb "move" being negated within the subordinate clause 
 					(meaning it is either dominated by a subordinate predicate or is one of them) */
 					if (negatedWords.contains(index1) && 
 						(dominates(i, subordinatePredicates, index1) || subordinatePredicates.contains(index1)))
+					{
 						isStalemated = true;
-					//check for a modifier of the verb being negated within the subordinate clause
+					}
+					//check for a modifier or argument of the verb being negated within the subordinate clause
 					else if (negatedWords.contains(index2) && dominates(i, subordinatePredicates, index2))
 						isStalemated = true;
+
+					/* If either of these checks worked, then isStalemated is true; if so, we now have to check any arguments 
+					of the verb "move" and see if they are any phrase denoting the opponent. We do this by calling
+					isOpponentArgument(). (If these are both true, isOppositeType must be set true.) */
+					if (isStalemated && isOpponentArgument(i, index1))
+						isOppositeType = true;
+						
 				}
 				/* check for "move" as a noun being negated, or the verb taking it as an argument 
 				being negated, within the subordinate clause */
@@ -230,18 +241,18 @@ public class RulesParser
 					(meaning it is either dominated by a subordinate predicate or is one of them) */
 					else if (negatedWords.contains(index1) && 
 						(dominates(i, subordinatePredicates, index1) || subordinatePredicates.contains(index1)))
+					{
 						isStalemated = true;
+					}
+
+					/* If either of these checks worked, then isStalemated is true; if so, we now have to check any 
+					arguments of the verb taking the noun "move" as an argument and see if they are any phrase denoting the opponent. 
+					We do this by calling isOpponentArgument(). (If these are both true, isOppositeType must be set true.) */
+					if (isStalemated && isOpponentArgument(i, index1))
+						isOppositeType = true;
 				}
 				//TODO: handle pieces-remaining!
 
-
-				if (d.contains("amod(") && (lemma2.equals("other") || lemma2.equals("opposing")) && 
-					dominates(i, subordinatePredicates, index2))
-					isOppositeType = true;
-				else if (isSynonymOf("opponent", lemma2) && dominates(i, subordinatePredicates, index2))
-					isOppositeType = true;
-				else if (isSynonymOf("opponent", lemma1) && dominates(i, subordinatePredicates, index1))
-					isOppositeType = true;
 			}
 
 			//determine type of end condition (win, lose, draw)
@@ -312,6 +323,44 @@ public class RulesParser
 			}
 			
 		}
+	}
+
+	/**
+	Helper method to parseEndConditions() - given a predicate (indexed by predicateIndex) in a sentence
+	(indexed by sentenceIndex), determines if the predicate takes any phrase denoting "opponent" as an argument.
+	*/
+	public boolean isOpponentArgument(int sentenceIndex, int predicateIndex)
+	{
+		//semantic dependency graph of the sentence
+		SemanticGraph graph = sentences.get(sentenceIndex).get(
+			SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+		//check for any of the arguments of the verb being any phrase denoting the other player
+		IndexedWord predicateNode = graph.getNodeByIndexSafe(predicateIndex+1); //+1 because SemanticGraph nodes are indexed from 1
+		Set<IndexedWord> children = graph.getChildren(predicateNode);
+		for (IndexedWord child: children)
+		{
+			String childLemma = lemmas[sentenceIndex][child.index()-1]; //the lemma of the word each child node represents
+			String childPOS = partsOfSpeech[sentenceIndex][child.index()-1]; // POS of the word each child node presents
+			//in both of the previous Strings, we subtract 1 from child.index() b/c SemanticGraph nodes are indexed from 1
+			if (isSynonymOf("opponent", childLemma))
+				return true;
+			/* if the child isn't a synonym of opponent, we check if it's a noun, and if so, 
+			we check if it is modified by "other" or "opposing */
+			else if (childPOS.charAt(0) == 'N')
+			{
+				Set<IndexedWord> adjectives = graph.getChildrenWithReln(child, 
+					UniversalEnglishGrammaticalRelations.ADJECTIVAL_MODIFIER); // all adjective modifiers of child
+				for (IndexedWord adjective: adjectives)
+				{
+					String adjLemma = lemmas[sentenceIndex][adjective.index()-1];
+					if (adjLemma.equals("other") || adjLemma.equals("opposing"))
+						return true;
+				}
+			}
+			//TODO: handle pronouns
+		}
+		return false;
+
 	}
 
 	

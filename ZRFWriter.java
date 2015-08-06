@@ -114,7 +114,7 @@ public class ZRFWriter
 							writer.write("\t\t" + "(add " + transitionType.toUpperCase() + ")" + "\n");
 							writer.write("\t" + "else" + "\n");
 
-							alreadyAdded = alreadyAdded + transitionType;
+							alreadyAdded = alreadyAdded + transitionType + " ";
 							numIfs++;
 						}
 					}

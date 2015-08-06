@@ -105,13 +105,16 @@ public class ZRFWriter
 					//TODO: this is assuming that you can not move into an occupied space! it already knows!
 					writer.write("(define " + name + "-" + move.toUpperCase() + "\t" + "($1 (verify empty?)" + "\n"); 
 					int numIfs = 0; //to know how many if statements have to be closed with a right parenthesis
-					for (Piece otherPiece: pieceTypes)
+					String alreadyAdded = ""; //so we don't keep adding multiple if statements of the same piece type
+					for (String transitionType: p.getTransitionTypes())
 					{
-						if (!p.equals(otherPiece) && !otherPiece.isDefault())
+						if (!alreadyAdded.contains(transitionType))
 						{
-							writer.write("\t" + "(if (in-zone? " + otherPiece.getName().toUpperCase() + "-transition)" + "\n");
-							writer.write("\t\t" + "(add " + otherPiece.getName().toUpperCase() + ")" + "\n");
+							writer.write("\t" + "(if (in-zone? " + transitionType.toUpperCase() + "-transition)" + "\n");
+							writer.write("\t\t" + "(add " + transitionType.toUpperCase() + ")" + "\n");
 							writer.write("\t" + "else" + "\n");
+
+							alreadyAdded = alreadyAdded + transitionType;
 							numIfs++;
 						}
 					}
@@ -361,11 +364,12 @@ public class ZRFWriter
 					writer.write("loss");
 				else // type is draw
 					writer.write("draw");
-				writer.write("-condition (");
+				writer.write("-condition ("); // open (P1 P2 )
 
 				// The following assumes the end conditions are the same for all players; that is a limitation of this system
 				for (int i = 1; i <= NUM_PLAYERS; i++)
-					writer.write("P" + i + " ");
+					writer.write("P" + i + " "); 
+				writer.write(") "); // close (P1 P2 )
 				writer.write(ec.getCondition() + " "); // write the condition (either stalemated or pieces-remaining)
 				if (ec.hasQuantifier()) // if this end condition has a quantifier (like pieces-remaining 0)
 					writer.write(ec.getQuantifier()); // write it

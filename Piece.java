@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 
 public class Piece
@@ -60,6 +61,14 @@ public class Piece
 	public void setPreviousType(Piece previousType)
 	{
 		this.previousType = previousType;
+	}
+
+	/**
+	Gets a Collection of all the names of transition types for this piece by calling values() on the transitionSentences hashmap.
+	*/
+	public Collection<String> getTransitionTypes()
+	{
+		return this.transitionSentences.values();
 	}
 
 	/**

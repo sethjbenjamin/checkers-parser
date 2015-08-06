@@ -372,7 +372,7 @@ public class ZRFWriter
 				writer.write(") "); // close (P1 P2 )
 				writer.write(ec.getCondition() + " "); // write the condition (either stalemated or pieces-remaining)
 				if (ec.hasQuantifier()) // if this end condition has a quantifier (like pieces-remaining 0)
-					writer.write(ec.getQuantifier()); // write it
+					writer.write(String.valueOf(ec.getQuantifier())); // write it
 				writer.write(")" + "\n");
 			}
 

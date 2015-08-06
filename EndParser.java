@@ -5,6 +5,7 @@ import java.util.Set;
 
 import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.semgraph.SemanticGraph;
+import edu.stanford.nlp.semgraph.SemanticGraphEdge;
 import edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations;
 import edu.stanford.nlp.trees.*;
 import edu.stanford.nlp.util.*;
@@ -39,19 +40,31 @@ public class EndParser
 
 	public void parseEndConditions()
 	{
-
-		ArrayList<Integer> endConditionSentences = new ArrayList<Integer>(1);
+		HashMap<Integer,String> endConditionSentences = new HashMap<Integer,String>();
 		for (int i = 0; i < sentences.size(); i++)
 		{
-			for (String lemma: lemmas[i])
+			for (int j = 0; j < lemmas[i].length; j++)
 			{
-				if ((lemma.equals("win") || lemma.equals("lose") || RulesParser.isSynonymOf("tie", lemma, 6) ||
-					RulesParser.isSynonymOf("end", lemma)) && !endConditionSentences.contains(i))
-					endConditionSentences.add(i);
+				String lemma = lemmas[i][j];
+				String pos = partsOfSpeech[i][j];
+
+				if (!endConditionSentences.containsKey(i))
+				{
+					if (lemma.equals("win"))
+						endConditionSentences.put(i, EndCondition.WIN);
+					else if (pos.charAt(0) == 'N' && (RulesParser.isSynonymOf("objective", lemma) || RulesParser.isSynonymOf("goal",lemma)))
+						endConditionSentences.put(i, EndCondition.WIN);
+					else if (lemma.equals("lose"))
+						endConditionSentences.put(i, EndCondition.LOSE);
+					else if (pos.charAt(0) == 'V' && RulesParser.isSynonymOf("end", lemma))
+						endConditionSentences.put(i, EndCondition.LOSE);
+					else if (RulesParser.isSynonymOf("tie", lemma, 6))
+						endConditionSentences.put(i, EndCondition.DRAW); 
+				}
 			}
 		}
 
-		for (int i: endConditionSentences)
+		for (int i: endConditionSentences.keySet())
 		{
 			//current sentence
 			CoreMap sentence = sentences.get(i);
@@ -71,16 +84,12 @@ public class EndParser
 
 			int quantifier = -1;
 
-			int matrixPredicate = -1;
-			ArrayList<Integer> subordinatePredicates = new ArrayList<Integer>(1);
 			ArrayList<Integer> negatedWords = new ArrayList<Integer>(1);
+			List<SemanticGraphEdge> negativeEdges = graph.findAllRelns(UniversalEnglishGrammaticalRelations.NEGATION_MODIFIER);
+			for (SemanticGraphEdge edge: negativeEdges)
+				negatedWords.add(edge.getGovernor().index()-1);
 
-			String firstDep = dependencies[0];
-			matrixPredicate = RulesParser.isolateIndexFromDependency(firstDep, 2);
-
-			/* We have to iterate over all dependencies two separate times. We first do this to determine the indices
-			of all subordinate predicates and negated words. Later, we analyze the other elements of the sentence, 
-			using the already-determined subordinate predicates and negated words in our analysis. */
+			//iterate over all dependencies
 			for (int j = 1; j < dependencies.length; j++)
 			{
 				String d = dependencies[j];
@@ -91,39 +100,14 @@ public class EndParser
 				String pos1 = partsOfSpeech[i][index1];
 				String pos2 = partsOfSpeech[i][index2];
 
-				if (d.contains("advcl("))
-					subordinatePredicates.add(index2);
-				else if (d.contains("acl:") || (d.contains("acl(")))
-					subordinatePredicates.add(index2);
-				else if (d.contains("neg("))
-					negatedWords.add(index1);
-				else if (d.contains("dep(") && lemma1.equals("not"))
-					negatedWords.add(index2);
-			}
-
-			//iterate over all dependencies a second time
-			for (int j = 1; j < dependencies.length; j++)
-			{
-				String d = dependencies[j];
-				int index1 = RulesParser.isolateIndexFromDependency(d,1);
-				int index2 = RulesParser.isolateIndexFromDependency(d,2);
-				String lemma1 = lemmas[i][index1];
-				String lemma2 = lemmas[i][index2];
-				String pos1 = partsOfSpeech[i][index1];
-				String pos2 = partsOfSpeech[i][index2];
-
-				//check for "move" as a verb being negated, or a modifier/argument of it being negated, within the subordinate clause
+				//check for "move" as a verb being negated, or a modifier/argument of it being negated
 				if (lemma1.equals("move") && pos1.charAt(0) == 'V')
 				{
-					/* check for the verb "move" being negated within the subordinate clause 
-					(meaning it is either dominated by a subordinate predicate or is one of them) */
-					if (negatedWords.contains(index1) && 
-						(parent.dominates(i, subordinatePredicates, index1) || subordinatePredicates.contains(index1)))
-					{
+					// check for the verb "move" being negated
+					if (negatedWords.contains(index1))
 						isStalemated = true;
-					}
-					//check for a modifier or argument of the verb being negated within the subordinate clause
-					else if (negatedWords.contains(index2) && parent.dominates(i, subordinatePredicates, index2))
+					//check for a modifier or argument of the verb being negated
+					else if (negatedWords.contains(index2))
 						isStalemated = true;
 
 					/* If either of these checks worked, then isStalemated is true; if so, we now have to check any arguments 
@@ -133,20 +117,15 @@ public class EndParser
 						isOppositeType = true;
 						
 				}
-				/* check for "move" as a noun being negated, or the verb taking it as an argument 
-				being negated, within the subordinate clause */
+				// check for "move" as a noun being negated, or the verb taking it as an argument 
 				else if (lemma2.equals("move") && pos2.charAt(0) == 'N') 
 				{
-					//check for the noun "move" being negated within the subordinate clause
-					if (negatedWords.contains(index2) && parent.dominates(i, subordinatePredicates, index2))
+					//check for the noun "move" being negated
+					if (negatedWords.contains(index2))
 						isStalemated = true;
-					/* check for the verb taking it as an argument being negated within the subordinate clause 
-					(meaning it is either dominated by a subordinate predicate or is one of them) */
-					else if (negatedWords.contains(index1) && 
-						(parent.dominates(i, subordinatePredicates, index1) || subordinatePredicates.contains(index1)))
-					{
+					// check for the verb taking "move" as an argument being negated
+					else if (negatedWords.contains(index1))
 						isStalemated = true;
-					}
 
 					/* If either of these checks worked, then isStalemated is true; if so, we now have to check any 
 					arguments of the verb taking the noun "move" as an argument and see if they are any phrase denoting the opponent. 
@@ -169,7 +148,6 @@ public class EndParser
 							int childIndex = child.index()-1;
 							if (partsOfSpeech[i][childIndex].charAt(0) == 'N' && isPieceName(lemmas[i][childIndex]))
 							{
-								//TODO: this does NOT check if the phrase is within subordinate clause - either add here or remove elsewhere
 								if (lemma1.equals("capture") || lemma1.equals("remove") || lemma1.equals("lose"))
 									isPiecesRemaining = true;
 								else if (RulesParser.isSynonymOf("block", lemma1))
@@ -181,18 +159,17 @@ public class EndParser
 						}
 					}
 				}
-
 			}
 
 			//determine type of end condition (win, lose, draw)
-			if (lemmas[i][matrixPredicate].equals("win"))
+			if (endConditionSentences.get(i).equals(EndCondition.WIN))
 			{
 				if (isOppositeType)
 					isLose = true;
 				else
 					isWin = true;
 			}
-			else if (lemmas[i][matrixPredicate].equals("lose"))
+			else if (endConditionSentences.get(i).equals(EndCondition.LOSE))
 			{
 				if (isOppositeType)
 					isWin = true;
@@ -200,10 +177,7 @@ public class EndParser
 					isLose = true;
 			}
 			else
-			{
-				/* TODO: handle other situations, where the matrix pred is not the end type
-				(eg: To win, you must capture all the other player's pieces.) */
-			}
+				isDraw = true;
 
 			//TODO: REMOVE! ALL debugging
 			System.out.println("Sentence " + i + " isWin: " + isWin);

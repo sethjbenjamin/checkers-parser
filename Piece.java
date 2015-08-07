@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 
 public class Piece
 {
@@ -61,14 +62,6 @@ public class Piece
 	public void setPreviousType(Piece previousType)
 	{
 		this.previousType = previousType;
-	}
-
-	/**
-	Gets a Collection of all the names of transition types for this piece by calling values() on the transitionSentences hashmap.
-	*/
-	public Collection<String> getTransitionTypes()
-	{
-		return this.transitionSentences.values();
 	}
 
 	/**
@@ -138,12 +131,38 @@ public class Piece
 	}
 
 	/**
+	Gets a Collection of all the names of transition types for this piece by calling values() on the transitionSentences hashmap.
+	*/
+	public Collection<String> getTransitionTypes()
+	{
+		return this.transitionSentences.values();
+	}
+
+
+	/**
 	Given an integer index of a transition sentence, and the name of the transition piece the sentence describes
 	this piece becoming, places the index and the piece name in the transitionSentences hashmap.
 	*/
 	public void addTransitionSentence(int index, String pieceName)
 	{
 		transitionSentences.put(new Integer(index), pieceName);
+	}
+
+	/**
+	Given the name of a falsely parsed transition piece that must be removed, removes any sentences that were parsed
+	as transition sentences for the false piece from the transitionSentences hashmap.
+	*/
+	public void removeTransitionType(String pieceName)
+	{
+		ArrayList<Integer> falseSentences = new ArrayList<Integer>(1);
+		for (Map.Entry<Integer,String> entry: transitionSentences.entrySet())
+		{
+			if (entry.getValue().equals(pieceName))
+				falseSentences.add(entry.getKey());
+		}
+		for (int i: falseSentences)
+			transitionSentences.remove(i);
+
 	}
 
 

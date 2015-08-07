@@ -6,7 +6,9 @@ import java.util.Map;
 
 import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.semgraph.SemanticGraph;
+import edu.stanford.nlp.semgraph.SemanticGraphEdge;
 import edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations;
+import edu.stanford.nlp.trees.*;
 import edu.stanford.nlp.util.*;
 
 
@@ -46,6 +48,8 @@ public class PieceParser
 			if (p.getMotionTypes().size() == 0) // remove pieces with no parsed motion types (removes false positives)
 			{
 				System.out.println("Piece " + p.getName() + " removed");
+				//remove all transition sentences for p from the transitionSentences hashmap of its previous type
+				p.getPreviousType().removeTransitionType(p.getName()); 
 				pieceTypes.remove(p);
 				i--;
 			}
@@ -630,36 +634,27 @@ public class PieceParser
 	{
 		//semantic dependency graph of sentence with index sentenceInd
 		SemanticGraph graph = sentences.get(sentenceInd).get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
-		ArrayList<Integer> indicesOfReach = new ArrayList<Integer>(1); //indices in sentenceInd of synonyms of reach or hyponyms of move
+		ArrayList<Integer> reachPredicates = new ArrayList<Integer>(1); 
+		//indices in sentenceInd of predicates entailing reaching a certain location on the board (which is how we parse transition zones)
 
-		//iterate over all lemmas in current sentence (lemmas[sentenceInd]), finding any synonyms of reach or hyponyms of move
+		/* iterate over all lemmas in current sentence (lemmas[sentenceInd]), finding any verbs that are synonyms of "reach", 
+		motion types, or the word "get" (since "get to" is a synonym of "reach" in WordNet common in rulesets, but CoreNLP 
+		will only treat "get" as the predicate */
 		for (int i = 0; i < lemmas[sentenceInd].length; i++)
 		{
 			String lemma = lemmas[sentenceInd][i];
-			if (RulesParser.isSynonymOf("reach", lemma) || RulesParser.isHypernymOf("move", lemma))
-				indicesOfReach.add(i);
+			String pos = partsOfSpeech[sentenceInd][i];
+			//check if the word is a verb, and if it is a synonym of reach, a motion type, or "get"
+			if (pos.charAt(0) == 'V' && 
+				(RulesParser.isSynonymOf("reach", lemma) || moveTypes.contains(lemma) || lemma.equals("get")))
+			{
+				reachPredicates.add(i); // if so, add its index to reachPredicates
+			}
 		}
 
-		/* iterate over any indices of any synonym of reach/hyponyms of move (there is probably only 1, but just in case), finding 
-		those that head adverbial or adjectival subordinate clauses; all such indices will be stored in reachSubordClause */
-		ArrayList<Integer> reachSubordClause = new ArrayList<Integer>(1); 
-		for (int i: indicesOfReach)
-		{
-			IndexedWord reachNode = graph.getNodeByIndexSafe(i+1); 
-			//synonym of reach in the SemanticGraph (have to add 1 because SemanticGraph nodes are indexed from 1, not 0)
-			IndexedWord parentNode = graph.getParent(reachNode); //parent of reachNode
-
-			String relnName = null;
-			if (reachNode != null && parentNode != null)
-				relnName = graph.reln(parentNode, reachNode).getShortName();
-			/* relnName is the grammatical relation between the synonym of reach and its parent node in the semantic 
-			dependency graph (we want this to either be an adverbial or adjectival clause) */
-			if (relnName != null && (relnName.equals("advcl") || relnName.equals("acl:relcl")))
-				reachSubordClause.add(i);
-		}
-
-		/* we want to find adjectives denoting nearness or farness modifiyng "row" that are within the subordinate clause
-		in the sentence; that is, those that are dominated by any of the synonyms of reach indexed in reachSubordClause */
+		/* we want to find adjectives denoting nearness or farness modifiyng "row" that are within the clauses headed 
+		by any of the predicates entailing reaching a certain location in the sentence; that is, those that are dominated 
+		by any of the verbs indexed in reachPredicates */
 		
 		//dependencies for sentenceInd as a String[], each entry containing a single dependency String
 		String[] dependencies = graph.toString(SemanticGraph.OutputFormat.LIST).split("\n");
@@ -686,9 +681,9 @@ public class PieceParser
 				//The following checks if the noun being modified is any of "row", "rank", "side", "edge", or "end"
 				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || lemma1.equals("edge") || lemma1.equals("end"))
 				{
-					/*The following checks if the modifying adjective is dominated by the subordinate clause predicates indexed by
-					reachSubordClause; that is, this checks if this modifying adjective is within the subordinate clause. */
-					if (parent.dominates(sentenceInd, reachSubordClause, index2))
+					/*The following checks if the modifying adjective is dominated by any of the "reach" predicates indexed by
+					reachPredicates; that is, this checks if this modifying adjective is within the subordinate clause. */
+					if (parent.dominates(sentenceInd, reachPredicates, index2))
 					{
 						/* The following checks if the modifying adjective is any synonym of any of the following: "furthest",
 						"opposite", "far", or "last". These all correspond to the furthest row being the transition zone. */
@@ -720,9 +715,10 @@ public class PieceParser
 				//The following checks if the possessed noun is any of "row", "rank", "side", "edge", or "end"
 				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || lemma1.equals("edge") || lemma1.equals("end"))
 				{
-					/*The following checks if the possessing noun is dominated by the subordinate clause predicates indexed by
-					reachSubordClause; that is, this checks if this possessing noun is within the subordinate clause. */
-					if (parent.dominates(sentenceInd, reachSubordClause, index2))
+					/*The following checks if the possessing noun is dominated by any of the "reach" predicates indexed by
+					reachPredicates; that is, this checks if this possessing noun is within a clause headed by any of these 
+					predicates. */
+					if (parent.dominates(sentenceInd, reachPredicates, index2))
 					{
 						/* The following checks if the possessing noun is any synonym of "opponent". 
 						This corresponds to the furthest row being the transition zone. */

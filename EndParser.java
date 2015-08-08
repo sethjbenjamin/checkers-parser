@@ -133,6 +133,15 @@ public class EndParser
 					if (isStalemated && isOpponentArgument(i, index1))
 						isOppositeType = true;
 				}
+				// check for dependencies in which "move" is a noun modified by an adjective, and check if the modifier is negated
+				else if (lemma1.equals("move") && pos1.charAt(0) == 'N')
+				{
+					//check for the modifier of the noun "move" being negated
+					if (negatedWords.contains(index2))
+						isStalemated = true;
+					//we don't have to check if the noun "move" is negated, that's already checked in the previous if block
+				}
+				//TODO: REVAMP THE FOLLOWING to not use SemanticGraph!
 				else if (pos1.charAt(0) == 'V' && pos2.equals("DT") && lemma2.equals("all"))
 				{
 					//check for a phrase like "all of the pieces" as the argument of the predicate			
@@ -157,6 +166,16 @@ public class EndParser
 									isOppositeType = true;
 							}
 						}
+					}
+				}
+				else if ((d.contains("acl(") || d.contains("acl:")) && isPieceName(lemma1))
+				{
+					if (pos2.charAt(0) == 'V' && (lemma2.equals("leave") || lemma2.equals("remain")))
+					{
+						isPiecesRemaining = true;
+						if (negatedWords.contains(index1))
+							quantifier = 0;
+						//TODO: ELSE to use NER to get numbers!!
 					}
 				}
 			}
@@ -268,6 +287,10 @@ public class EndParser
 		return false;
 	}
 
+	/**
+	Helper method to parseEndConditions() - given a noun (indexed by nounIndex) in a sentence
+	(indexed by sentenceIndex), determines if the noun is "possessed" by any noun phrase denoting "opponent".
+	*/
 	public boolean isOpponentPossessor(int sentenceIndex, int nounIndex)
 	{
 		//semantic dependency graph of the sentence
@@ -312,7 +335,7 @@ public class EndParser
 			return true;
 		for (Piece p: pieceTypes)
 		{
-			if (p.getName().equals(str))
+			if (p.isAnyName(str))
 				return true;
 		}
 		return false;

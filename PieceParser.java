@@ -48,8 +48,9 @@ public class PieceParser
 			if (p.getMotionTypes().size() == 0) // remove pieces with no parsed motion types (removes false positives)
 			{
 				System.out.println("Piece " + p.getName() + " removed");
-				//remove all transition sentences for p from the transitionSentences hashmap of its previous type
-				p.getPreviousType().removeTransitionType(p.getName()); 
+				//remove all transition sentences for p from the transitionSentences hashmap of its previous type, if it has one
+				if (!p.isDefault())
+					p.getPreviousType().removeTransitionType(p.getName()); 
 				pieceTypes.remove(p);
 				i--;
 			}

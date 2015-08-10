@@ -140,14 +140,20 @@ public class ZRFWriter
 		try
 		{
 			// write player && turn-order info (P1, P2... PNUM_PLAYERS)
-			writer.write("\t" + "(players");
+			writer.write("\t" + "(players"); //open (players )
 			for (int i = 1; i <= NUM_PLAYERS; i++)
 				writer.write(" P" + i);
-			writer.write(")" + "\n");
-			writer.write("\t" + "(turn-order");
+			writer.write(")" + "\n"); // close (players )
+			writer.write("\t" + "(turn-order"); //open (turn-order )
 			for (int i = 1; i <= NUM_PLAYERS; i++)
 				writer.write(" P" + i);
-			writer.write(")" + "\n");
+			writer.write(")" + "\n"); // close (turn-order )
+			//write move-priorities
+			//TODO: move-priorities is COMPLETELY placeholder
+			writer.write("\t" + "(move-priorities"); // open (move-priorities )
+			for (String moveType: moveTypes)
+				writer.write(" " + moveType.toUpperCase()); 
+			writer.write(")" + "\n"); // close (move-priorities )
 
 			writer.newLine();
 		}
@@ -370,10 +376,16 @@ public class ZRFWriter
 				for (int i = 1; i <= NUM_PLAYERS; i++)
 					writer.write("P" + i + " "); 
 				writer.write(") "); // close (P1 P2 )
-				writer.write(ec.getCondition() + " "); // write the condition (either stalemated or pieces-remaining)
+
 				if (ec.hasQuantifier()) // if this end condition has a quantifier (like pieces-remaining 0)
-					writer.write(String.valueOf(ec.getQuantifier())); // write it
-				writer.write(")" + "\n");
+				{
+					writer.write("(" + ec.getCondition() + " "); // write the condition within parentheses
+					writer.write(String.valueOf(ec.getQuantifier()) + ") "); // write the quantifier, close the condition parentheses
+				}
+				else 
+					writer.write(ec.getCondition() + " "); // write the condition, not within parentheses
+
+				writer.write(")" + "\n"); // close (end-condition )
 			}
 
 			writer.newLine();

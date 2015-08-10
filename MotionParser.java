@@ -276,7 +276,7 @@ public class MotionParser
 					Since our example sentence is one of the more common ways English language rulesets describe the motion of kings,
 					we must also check if modified is a coordinating conjunction. */
 					if (moveTypes.contains(lemma1) || RulesParser.isSynonymOf("move", lemma1) || 
-						RulesParser.isSynonymOf("direction", lemma1) || pos1.equals("CC"))
+						RulesParser.isSynonymOf("direction", lemma1) || lemma1.equals("square") || pos1.equals("CC"))
 					{
 						/*Now, we call addDirection() to check if lemma2, the modifier, is a directional adverb or adjective, and if so, to
 						add it to motionTypes. */

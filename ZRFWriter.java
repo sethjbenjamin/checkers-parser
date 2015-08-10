@@ -15,7 +15,7 @@ public class ZRFWriter
 	private String[][] transitionZones; //as parsed by BoardParser+PieceParser
 	private ArrayList<String> moveTypes; //as parsed by PieceParser
 	private ArrayList<Piece> pieceTypes; //as parsed by PieceParser+MotionParser
-	private ArrayList<EndCondition> endConditions; //as parsed by RulesParser
+	private ArrayList<EndCondition> endConditions; //as parsed by EndParser
 
 	private int[] dimensions;
 	private String[][] zrfCoordinates;

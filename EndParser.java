@@ -40,6 +40,16 @@ public class EndParser
 
 	public void parseEndConditions()
 	{
+		/* The following method parses end conditions. First, it determines candidate end condition sentences by searching all lemmas
+		in all sentences for the following words:
+		- "win", any noun synonym of "objective", any noun synonym of "goal" (sentences with these potentially describe a win condition)
+		- "lose", any verb synonym of "end" (sentences with these potentially describe a lose condition)
+		- any noun synonym of "tie", or the noun "stalemate" (sentences with these potentially describe a draw condition)
+		It is assumed that no single sentence describes multiple types of conditions (eg, both a win condition and a lose condition.)
+		However, a single sentence may describe multiple end conditions of the same time (eg, two different lose conditions.) 
+		The indices of each of these sentences is stored as the keys in the hashamp endConditionSentences, with the type of condition
+		the sentence is determined to potentially describe as the value corresponding to each key. */
+
 		HashMap<Integer,String> endConditionSentences = new HashMap<Integer,String>();
 		for (int i = 0; i < sentences.size(); i++)
 		{
@@ -56,14 +66,55 @@ public class EndParser
 						endConditionSentences.put(i, EndCondition.WIN);
 					else if (lemma.equals("lose"))
 						endConditionSentences.put(i, EndCondition.LOSE);
+					else if (pos.charAt(0) == 'N' && RulesParser.isSynonymOf("tie", lemma, 6)) //6 is wordnet index of "tie" relating to games
+						endConditionSentences.put(i, EndCondition.DRAW);
+					else if (pos.charAt(0) == 'N' && lemma.equals("stalemate"))
+						endConditionSentences.put(i, EndCondition.DRAW);
 					else if (pos.charAt(0) == 'V' && RulesParser.isSynonymOf("end", lemma))
-						endConditionSentences.put(i, EndCondition.LOSE);
-					else if (RulesParser.isSynonymOf("tie", lemma, 6))
-						endConditionSentences.put(i, EndCondition.DRAW); 
+						endConditionSentences.put(i, EndCondition.LOSE); 
 				}
 			}
 		}
 
+		/* Now, we iterate over all the sentences found, and search for constructions that describe end conditions.
+		This system supports two kinds of end conditions, which are directly supported by the ZRF format: a player being stalemated 
+		(ie, unable to make a move), and a player having a certain number of pieces remaining (in the case of checkers, 0 being a loss). 
+
+		For a stalemated condition, the system searches for the following constructions:
+		1. the predicate "move" being negated (eg: "when a player can not move")
+		2. a modifier or argument of the predicate "move" being negated (eg: "when a player can no longer move")
+		3. the noun "move" being negated (eg: "when a player can make no move")
+		4. the predicate taking the noun "move" as an argument being negated (eg: "when a player can't make a move")
+		5. a modifier of the noun "move" being negated (eg: "when a player has no available moves")
+		6. any verb synonym of "block" taking any phrase denoting "all of the pieces" (where "pieces" can be substitued with
+		any of the parsed piece names) as an argument (eg: "when all of your pieces are blocked")
+
+		A pieces-remaining condition notably requires a quantifier value (that is, the number of pieces that must remain for the condition
+		to be true.) This value is stored in the integer variable "quantifier".
+		For a pieces-remaining condition, the system searches for the following constructions:
+		7. any of the verbs "capture", "remove" or "lose" taking any phrase denoting "all of the pieces" (where "pieces" can be 
+		substitued with any of the parsed piece names) as an argument (eg: "when all of your pieces are blocked") 
+		   - this necessarily implies the quantifier = 0
+		8. the verb "have" taking the noun phrase "pieces left" or "pieces remaining" as an argument, where "pieces" can be 
+		substitued with any of the parsed piece names, and where this argument is either
+		   - negated (quantifier = 0)
+		   - modified by a number N (quantifier = N)
+		9. the verb "have" taking the noun phrase "no more pieces" as an argument (quantifier = 0)
+
+		Often, rulesets will define an end condition for the player by describing a state of the player's opponent. For example:
+		"A player wins the game when the opponent cannot make a move." defines a win condition for the player by describing
+		the stalemated condition of their opponent (the opponent's lose condition). 
+		To acommodate for this, we have to analyze the constructions we search for to see if they describe the opponent or 
+		the player, and if they describe the opponent, consider this end condition to be of the opposite type. (The boolean
+		variable isOppositeType handles this.)
+		In the previously described constructions numbered 1, 2, 3, 4, 5, 8, 9, we searched for predicates: either "move" (v),
+		a verb taking "move" (n) as an argument, or "have" taking "piece" as an argument. We test for isOppositeType by seeing if 
+		the predicate takes any noun phrase denoting "opponent" as an argument. (Such NPs include: "other player", "opposing player",
+		and any noun synonym of "opponent".) 
+		 - (eg: "When the opponent can not make a move" "When the other player has no pieces left")
+		In the previously desribed constructions numbered 6, 7, we searched for DPs denoting "all of the pieces". We test for 
+		isOppositeType by seeing if the noun in this DP is possessed by any NP denoting "opponent". 
+		 - (eg: "When all of the other player's pieces are captured" "When you have blocked all the opponent's pieces") */
 		for (int i: endConditionSentences.keySet())
 		{
 			//current sentence
@@ -73,18 +124,26 @@ public class EndParser
 			//dependencies for current sentence as a String[], each entry containing a single dependency String
 			String[] dependencies = graph.toString(SemanticGraph.OutputFormat.LIST).split("\n");
 
-			boolean isWin = false;
-			boolean isLose = false;
-			boolean isDraw = false;
+			boolean isWin = false; // whether or not this sentence describes a win condition
+			boolean isLose = false; // whether or not this sentence describes a lose condition
+			boolean isDraw = false; // whether or not this sentence describes a draw condition
 
 			boolean isOppositeType = false;
 
-			boolean isStalemated = false;
-			boolean isPiecesRemaining = false;
+			boolean isStalemated = false; // whether or not this sentence describes a stalemated end condition
+			boolean isPiecesRemaining = false; // whether or not this sentence describes a pieces-remaining end condition
+
+			boolean isCaptureAll = false; //representing the dobj(capture, all) dependency in a statement like "capture all of the pieces"
+			boolean isBlockAll = false; //representing the dobj(block, all) dependency in a statement like "block all of the pieces"
+			boolean isAllPieces = false; //representing the nmod:of(all, pieces) dependency in either of the previous two statements
+
+			boolean isPieceLeft = false; //representing the acl(piece, left) dependency in a statement like "has no pieces left"
+			boolean isHaveMore = false; //representing the advmod(has, more) dependency in a statement like "has no more pieces"
+			boolean isHavePiece = false; //representing the dobj(has, pieces) dependency in either of the previous two statements
 
 			int quantifier = -1;
 
-			ArrayList<Integer> negatedWords = new ArrayList<Integer>(1);
+			ArrayList<Integer> negatedWords = new ArrayList<Integer>(1); //list of all words directly governing a negation word
 			List<SemanticGraphEdge> negativeEdges = graph.findAllRelns(UniversalEnglishGrammaticalRelations.NEGATION_MODIFIER);
 			for (SemanticGraphEdge edge: negativeEdges)
 				negatedWords.add(edge.getGovernor().index()-1);
@@ -141,44 +200,96 @@ public class EndParser
 						isStalemated = true;
 					//we don't have to check if the noun "move" is negated, that's already checked in the previous if block
 				}
-				//TODO: REVAMP THE FOLLOWING to not use SemanticGraph!
+				// check for a verb taking a DP headed by "all" as an argument
 				else if (pos1.charAt(0) == 'V' && pos2.equals("DT") && lemma2.equals("all"))
 				{
-					//check for a phrase like "all of the pieces" as the argument of the predicate			
-					quantifier = 0;
-					IndexedWord node2 = graph.getNodeByIndexSafe(index2+1);
-					Set<IndexedWord> children = null;
-					if (node2 != null)
-						children = graph.getChildren(node2);
-					if (children != null)
-					{
-						for (IndexedWord child: children)
-						{
-							int childIndex = child.index()-1;
-							if (partsOfSpeech[i][childIndex].charAt(0) == 'N' && isPieceName(lemmas[i][childIndex]))
-							{
-								if (lemma1.equals("capture") || lemma1.equals("remove") || lemma1.equals("lose"))
-									isPiecesRemaining = true;
-								else if (RulesParser.isSynonymOf("block", lemma1))
-									isStalemated = true;
-
-								if ((isPiecesRemaining || isStalemated) && isOpponentPossessor(i, childIndex))
-									isOppositeType = true;
-							}
-						}
-					}
+					/* if the verb is "capture", "remove", or "lose", set isCaptureAll true (if isAllPieces is also true,
+					isPiecesRemaning will be set true and quantifier will be set to 0) */
+					if (lemma1.equals("capture") || lemma1.equals("remove") || lemma1.equals("lose"))
+						isCaptureAll = true;
+					/* if the verb is any synonym of "block", set isBlockAll true (if isAllPieces is also true,
+					isStalemated will be set true */
+					else if (RulesParser.isSynonymOf("block", lemma1))
+						isBlockAll = true;
 				}
+				//check for a DP headed by "all" and taking a piece name as its complement
+				else if (pos1.equals("DT") && lemma1.equals("all") && isPieceName(lemma2))
+				{
+					//set is all pieces true; the check for "dep(" is if CoreNLP fails to figure out the phrase structure
+					if (d.contains("nmod:of") || d.contains("dep("))
+						isAllPieces = true;
+
+					//if the piece name is possessed by any NP denoting "opponent", set isOppositeType true
+					if (isOpponentPossessor(i, index2))
+						isOppositeType = true;
+				}
+				/* check for a DP headed by "all" and taking a piece name as its complement (this is only if CoreNLP really fails to 
+				figure out the phrase structure) */
+				else if (d.contains("dep") && pos2.equals("DT") && lemma2.equals("all") && isPieceName(lemma1))
+				{
+					isAllPieces = true;
+
+					//if the piece name is possessed by any NP denoting "opponent", set isOppositeType true
+					if (isOpponentPossessor(i, index1))
+						isOppositeType = true;
+				}
+				//check for a predicate taking a piece name as an argument
+				else if (pos1.charAt(0) == 'V' && isPieceName(lemma2))
+				{
+					//check if the verb is "have"
+					if (lemma1.equals("have"))
+					{
+						isHavePiece = true; //if isPieceLeft or isHaveMore is true, isPiecesRemaining will be set to true
+
+						//check if any arguments of the verb "have" are any phrase denoting the opponent
+						if (isOpponentArgument(i, index1))
+							isOppositeType = true;
+					}
+					/* CoreNLP sometimes botches phrases like "capture all the pieces" and will consider 
+					"pieces" to be the head of the DP, thus resulting in dependencies like dobj(capture, pieces)
+					when it should parse dobj(capture, all). Thus, if we find something like (capture, pieces), we have
+					to treat it the same as dobj(capture, all) (ie, setting isCaptureAll to true). */
+					else if (lemma1.equals("capture") || lemma1.equals("remove") || lemma1.equals("lose"))
+						isCaptureAll = true;
+					// The same goes for when the verb is "block".
+					else if (RulesParser.isSynonymOf("block", lemma1))
+						isBlockAll = true;
+				}
+				// check for a noun piece name modified by a adjectival clause
 				else if ((d.contains("acl(") || d.contains("acl:")) && isPieceName(lemma1))
 				{
+					//if the adjectival clause is headed by "leave" or "remain"
 					if (pos2.charAt(0) == 'V' && (lemma2.equals("leave") || lemma2.equals("remain")))
 					{
-						isPiecesRemaining = true;
-						if (negatedWords.contains(index1))
-							quantifier = 0;
+						isPieceLeft = true; 
+						if (negatedWords.contains(index1)) //if the piece name is negated,
+							quantifier = 0; //this denotes zero pieces remaining
 						//TODO: ELSE to use NER to get numbers!!
 					}
 				}
+				//check for a construction like "have no more pieces"
+				else if (d.contains("advmod(") && lemma1.equals("have") && lemma2.equals("more"))
+				{
+					isHaveMore = true;
+					if (negatedWords.contains(index2))
+						quantifier = 0;
+				}
 			}
+
+			//handle statements like "capture all of the pieces" / "block all of the pieces"
+			if (isAllPieces)
+			{
+				if (isCaptureAll)
+				{
+					quantifier = 0;
+					isPiecesRemaining = true;
+				}
+				else if (isBlockAll)
+					isStalemated = true;
+			}
+			// handle statements like "has no pieces left" / "has no more pieces"
+			if (isHavePiece && (isPieceLeft || isHaveMore))
+				isPiecesRemaining = true;
 
 			//determine type of end condition (win, lose, draw)
 			if (endConditionSentences.get(i).equals(EndCondition.WIN))
@@ -212,7 +323,7 @@ public class EndParser
 					endConditions.add(new EndCondition(EndCondition.WIN, EndCondition.STALEMATED));
 					System.out.println("Win condition parsed: stalemated in sentence " + i);
 				}
-				if (isPiecesRemaining)
+				if (isPiecesRemaining && quantifier > -1)
 				{
 					endConditions.add(new EndCondition(EndCondition.WIN, EndCondition.PIECES_REMAINING, quantifier));
 					System.out.println("Win condition parsed: pieces remaining = " + quantifier + " in sentence " + i);
@@ -225,7 +336,7 @@ public class EndParser
 					endConditions.add(new EndCondition(EndCondition.LOSE, EndCondition.STALEMATED));
 					System.out.println("Lose condition parsed: stalemated in sentence " + i);
 				}
-				if (isPiecesRemaining)
+				if (isPiecesRemaining && quantifier > -1)
 				{
 					endConditions.add(new EndCondition(EndCondition.LOSE, EndCondition.PIECES_REMAINING, quantifier));
 					System.out.println("Lose condition parsed: pieces remaining = " + quantifier + " in sentence " + i);
@@ -238,7 +349,7 @@ public class EndParser
 					endConditions.add(new EndCondition(EndCondition.DRAW, EndCondition.STALEMATED));
 					System.out.println("Draw condition parsed: stalemated in sentence " + i);
 				}
-				if (isPiecesRemaining)
+				if (isPiecesRemaining && quantifier > -1)
 				{
 					endConditions.add(new EndCondition(EndCondition.DRAW, EndCondition.PIECES_REMAINING, quantifier));
 					System.out.println("Draw condition parsed: pieces remaining = " + quantifier + "in sentence " + i);

@@ -76,6 +76,75 @@ public class EndParser
 			}
 		}
 
+		/* Also, constructions like the following are pretty common: 
+		"A player wins the game when the opponent cannot make a move. In most cases, this is because all of the 
+		opponent's pieces have been captured, but it could also be because all of his pieces are blocked in." 
+		In this pair of sentences, the first one gets has already been parsed and put in endConditionSentences, as it contains 
+		the word "win"; however, the second sentence also importantly describe the nature of win conditions, referencing the 
+		previous sentence with the pro-sentence "this". 
+		Thus, we must iterate over each sentence (sentenceIndex) placed as a key in endConditionSentences, and check the following:
+		 - if sentence w/ index (sentenceIndex-1) is not already a key in sentenceIndex, and the sentence w/ index (sentenceIndex) has 
+		a pro-sentence, then the pro-sentence is likely referring to sentenceIndex-1. (We check by seeing if a determiner occupies the 
+		place of a noun in the list of dependencies). If so, we put sentenceIndex-1 in the hashmap, using the same value as sentenceIndex.
+		  - eg: "Continue jumping your opponent's pieces until they are all removed. Once you have done this, you've won!"
+		- if sentence w/ index (sentenceIndex+1) is not already a key in sentenceIndex, and the sentence w/ index (sentenceIndex+1) has 
+		a pro-sentence, then the pro-sentence is likely referring to sentenceIndex. If so, we put sentenceIndex+1 in the hashmap, 
+		using the same value as sentenceIndex. */
+
+		/* instead of iterating directly over endConditionSentences.keySet(), we make an array containing all the keys
+		and iterate over that, in order to avoid ConcurrentModificationExceptions */
+		int[] sentenceIndices = new int[endConditionSentences.size()];
+		int arrayInd = 0;
+		for (int key: endConditionSentences.keySet())
+		{
+			sentenceIndices[arrayInd] = key;
+			arrayInd++;
+		}
+
+		for (int sentenceIndex: sentenceIndices)
+		{
+			if (!endConditionSentences.containsKey(sentenceIndex-1))
+			{
+				//dependencies for sentenceIndexth sentence as a String[], each entry containing a single dependency String
+				String[] dependencies = sentences.get(sentenceIndex).get(
+					SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+					SemanticGraph.OutputFormat.LIST).split("\n");
+				for (int j = 1; j < dependencies.length; j++)
+				{
+					String d = dependencies[j];
+					int index2 = RulesParser.isolateIndexFromDependency(d,2);
+					String pos2 = partsOfSpeech[sentenceIndex][index2];
+
+					if (pos2.equals("DT") &&
+						(d.contains("dobj(") || d.contains("nsubj(") || d.contains("xcomp(") || d.contains("nmod:")))
+					{
+						endConditionSentences.put(sentenceIndex-1, endConditionSentences.get(sentenceIndex));
+						break;
+					}
+				}
+			}
+			if (!endConditionSentences.containsKey(sentenceIndex+1) && sentenceIndex+1 < sentences.size())
+			{
+				//dependencies for sentenceIndex+1th sentence as a String[], each entry containing a single dependency String
+				String[] dependencies = sentences.get(sentenceIndex+1).get(
+					SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+					SemanticGraph.OutputFormat.LIST).split("\n");
+				for (int j = 1; j < dependencies.length; j++)
+				{
+					String d = dependencies[j];
+					int index2 = RulesParser.isolateIndexFromDependency(d,2);
+					String pos2 = partsOfSpeech[sentenceIndex+1][index2];
+
+					if (pos2.equals("DT") &&
+						(d.contains("dobj(") || d.contains("nsubj(") || d.contains("xcomp(") || d.contains("nmod:")))
+					{
+						endConditionSentences.put(sentenceIndex+1, endConditionSentences.get(sentenceIndex));
+						break;
+					}
+				}
+			}
+		}
+
 		/* Now, we iterate over all the sentences found, and search for constructions that describe end conditions.
 		This system supports two kinds of end conditions, which are directly supported by the ZRF format: a player being stalemated 
 		(ie, unable to make a move), and a player having a certain number of pieces remaining (in the case of checkers, 0 being a loss). 
@@ -310,11 +379,11 @@ public class EndParser
 				isDraw = true;
 
 			//TODO: REMOVE! ALL debugging
-			System.out.println("Sentence " + i + " isWin: " + isWin);
+			/*System.out.println("Sentence " + i + " isWin: " + isWin);
 			System.out.println("Sentence " + i + " isLose: " + isLose);
 			System.out.println("Sentence " + i + " isOppositeType: " + isOppositeType);
 			System.out.println("Sentence " + i + " isStalemated: " + isStalemated);
-			System.out.println("Sentence " + i + " isPiecesRemaining: " + isPiecesRemaining);
+			System.out.println("Sentence " + i + " isPiecesRemaining: " + isPiecesRemaining);*/
 
 			if (isWin)
 			{

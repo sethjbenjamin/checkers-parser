@@ -331,9 +331,32 @@ public class EndParser
 					if (pos2.charAt(0) == 'V' && (lemma2.equals("leave") || lemma2.equals("remain")))
 					{
 						isPieceLeft = true; 
-						if (negatedWords.contains(index1)) //if the piece name is negated,
+						if (negatedWords.contains(index1)) //if the piece name is negated, (eg "no pieces left")
 							quantifier = 0; //this denotes zero pieces remaining
-						//TODO: ELSE to use NER to get numbers!!
+						else //see if any numbers modify the piecename
+						{
+							Set<IndexedWord> numericModifiers = graph.getChildrenWithReln(
+								graph.getNodeByIndexSafe(index1+1), UniversalEnglishGrammaticalRelations.NUMERIC_MODIFIER);
+							for (IndexedWord numberWord: numericModifiers) 
+							{	/* there should logically only be at most 1 numeric modifier in this context (it doesn't make sense
+							 	to say "you lose when you have only one or two pieces left," as it is sufficient to just say "two") 
+							 	- but in the case of multiple, this arbitrarily sets quantifier to be the last one in the set.
+							 	this could be altered to make quantifier a list and to produce separate end conditions for each 
+							 	list entry, if necessary (it's unnecessary for checkers) */
+								try
+								{
+									String numberString = sentence.get(CoreAnnotations.TokensAnnotation.class).get(
+										numberWord.index()-1).get(CoreAnnotations.NormalizedNamedEntityTagAnnotation.class);
+									if (numberString != null)
+									{
+										int number = (int) Double.parseDouble(numberString);
+										quantifier = number;
+									}
+								}
+								catch (NumberFormatException e)
+								{ /* ignore; if the NER doesn't parse a number, we just ignore it and don't change quantifier*/ }
+							}
+						}
 					}
 				}
 				//check for a construction like "have no more pieces"

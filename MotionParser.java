@@ -1,8 +1,6 @@
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.semgraph.SemanticGraph;
@@ -235,10 +233,11 @@ public class MotionParser
 
 			CoreMap sentence = sentences.get(i); //the current sentence
 
+			SemanticGraph graph = sentence.get(
+				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
+
 			//dependencies for current sentence as a String[], each entry containing a single dependency String
-			String[] dependencies = sentence.get(
-				SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
-				SemanticGraph.OutputFormat.LIST).split("\n");
+			String[] dependencies = graph.toString(SemanticGraph.OutputFormat.LIST).split("\n");
 
 			//iterate over all dependencies, searching for certain types
 			for (int j = 1; j < dependencies.length; j++)
@@ -287,24 +286,31 @@ public class MotionParser
 				}
 				else if (d.contains("nmod:toward")) //check for a PP like "toward the opponent"
 				{
-					/* The following checks if the word being modified by the PP is one of the allowed move types or a synonym of the nouns 
-					"move" or "direction." */
-					if (moveTypes.contains(lemma1) || RulesParser.isSynonymOf("direction", lemma1) || RulesParser.isSynonymOf("move", lemma1))
+					// The following checks if the NP complement of the preposition is headed by a synonym of "opponent".
+					if (RulesParser.isSynonymOf("opponent", lemma2)) //the object of the preposition is the second word in the dependency
 					{
-						/*At this point, we have determined that the phrase we are looking at is a PP of the form "toward/towards [DP]" 
-						modifying a motion predicate, or either of the nouns "move" or "direction". 
-						Now we have to determine the object of the proposition, and what direction of motion this object implies. 
-						For now, since it is the only such phrase that occurs in our 10 sample rulesets, the only object of 
-						"toward"/"towards"
-						that we will consider is the noun "opponent." This entails forward motion: "checkers can only move toward the 
-						opponent" is equivalent to "checkers can only move forward". */
-						if (RulesParser.isSynonymOf("opponent", lemma2)) //the object of the preposition is the second word in the dependency
+						if (motionTypes.indexOf(Direction.FORWARD) < 0) //TODO: maybe add a negation check
+							motionTypes.add(Direction.FORWARD);
+						System.out.println("Sentence " + i + ": Forward motion added for " + name + " as a modifying PP"); //debugging
+					}
+					/* If not, the following checks all dependents on the head of the NP complement of the preposition, searching
+					for a phrase denoting the opposite direction: either the adjectives "other", "opposing", or "opposite", or
+					any synonym of "opponent". This is for phrases like "toward the other edge" or "toward the opponent's side" */
+					else
+					{
+						IndexedWord noun = graph.getNodeByIndexSafe(index2+1);
+						for (IndexedWord dependent: graph.getChildren(noun))
 						{
-							if (motionTypes.indexOf(Direction.FORWARD) < 0) //TODO: maybe add a negation check
-								motionTypes.add(Direction.FORWARD);
-							System.out.println("Sentence " + i + ": Forward motion added for " + name + " as a modifying PP"); //debugging
-
+							String dependentLemma = lemmas[i][dependent.index()-1];
+							if (RulesParser.isSynonymOf("opponent", dependentLemma) || dependentLemma.equals("opposite") || 
+								dependentLemma.equals("other") || dependentLemma.equals("opposing")) 
+							{
+								if (motionTypes.indexOf(Direction.FORWARD) < 0) //TODO: maybe add a negation check
+									motionTypes.add(Direction.FORWARD);
+								System.out.println("Sentence " + i + ": Forward motion added for " + name + " as a modifying PP"); //debugging
+							}
 						}
+
 					}
 				}
 			}

@@ -81,6 +81,8 @@ public class PieceParser
 	{
 		/* This method works by iterating over all lemmas in a ruleset, counting the number of times any hyponym of 
 		"move" appears in the ruleset, and choosing the n most frequent hyponyms to be the move types of the game.
+		(We exclude the term "play", as this is a hyponym of move in WordNet that occurs commonly in game rulesets, but is very 
+		unlikely to ever entail a type of motion.)
 		The following constant, NUM_MOVETYPES, specifies the value of n. There are two types of moves in checkers - 
 		"moving" vs "jumping" - so this constant is set to 2.
 		*/
@@ -98,7 +100,7 @@ public class PieceParser
 		{
 			for (String lemma: lemmas[i])
 			{
-				if (RulesParser.isHypernymOf("move", lemma)) // only considering hyponyms of "move"
+				if (RulesParser.isHypernymOf("move", lemma) && !lemma.equals("play")) // only considering hyponyms of "move" other than "play"
 				{
 					if (!moveHyponyms.containsKey(lemma)) // if the hyponym isn't in the hashmap,
 						moveHyponyms.put(lemma, 0); // add it to the hashmap
@@ -278,6 +280,35 @@ public class PieceParser
 
 					}
 				}
+				// The following checks for a predicate nominative.
+				if (d.contains("nsubj") && pos1.charAt(0) == 'N')
+				{
+					//The following checks if the subject of the predicate nominative is name.
+					if (lemma2.equals(name))
+					{
+						// If so, lemma1 likely denotes an equivalent type to name.
+						/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
+						we don't want to simply add the same name as its own equivalent. */
+						if (!moveTypes.contains(lemma1) && !RulesParser.isSynonymOf("player", lemma1, 0) && !lemma1.equals(name))
+						{
+							currentPiece.addEquivalentType(lemma1);
+							System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma1);
+						}
+					}
+					//The following checks if the predicate nominative itself is name.
+					else if (lemma1.equals(name))
+					{
+						// If so, lemma2 (the subject) likely denotes an equivalent type to name.
+						/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
+						we don't want to simply add the same name as its own equivalent. */
+						if (!moveTypes.contains(lemma2) && !RulesParser.isSynonymOf("player", lemma2, 0) && !lemma2.equals(name))
+						{
+							currentPiece.addEquivalentType(lemma2);
+							System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma2);
+						}
+
+					}
+				}
 				/* The following checks for an adjectival clause modifying a noun, containing either 
 				of the past participles "known" or "called" as its head word. */
 				if (d.contains("acl(") && pos1.charAt(0) == 'N' && (lemma2.equals("know") || lemma2.equals("call")))
@@ -397,8 +428,9 @@ public class PieceParser
 				if (d.contains("nsubjpass") && lemma1.equals("make"))
 					isPassiveTransition = true; 
 				/*The following checks if the sentence contains the predicate "make" in the passive voice, taking a noun argument
-				as either its direct object or its open clausal complement. */
-				if ((lemma1.equals("make")) && (pos2.charAt(0) == 'N') && (d.contains("dobj") || d.contains("xcomp")) && isPassiveTransition)
+				as either its direct object, its open clausal complement, or the object of the preposition "into". */
+				if ((lemma1.equals("make")) && (pos2.charAt(0) == 'N') && isPassiveTransition && 
+					(d.contains("dobj") || d.contains("xcomp") || d.contains("nmod:into")))
 				{
 					/* Checking isPassiveTransition in the if statement ensures that isTransitionSentence is only set 
 					true when the sentence that is potentially a transition sentence is in the passive voice. 

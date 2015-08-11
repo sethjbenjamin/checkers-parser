@@ -122,9 +122,10 @@ public class MotionParser
 					}
 				}
 
-				/* The following if statement checks if the current sentence contains any of the move types previously parsed
-				by the system as a predicate, and if so, if it either takes name or a pronoun as a subject or direct object. */
-				if (moveTypes.contains(lemma1) && (d.contains("dobj") || d.contains("nsubj")))
+				/* The following if statement checks if the current sentence contains any hyponym of "move" as a 
+				predicate, and if so, if it either takes name or a pronoun as a subject or direct object. */
+				//if (moveTypes.contains(lemma1) && (d.contains("dobj") || d.contains("nsubj")))
+				if (RulesParser.isHypernymOf("move", lemma1) && (d.contains("dobj") || d.contains("nsubj")))
 				{
 					//if p is a transition type, previousType holds its previous type
 					Piece previousType = p.getPreviousType();

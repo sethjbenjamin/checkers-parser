@@ -2,7 +2,7 @@ Basic rules.
 Checkers is a two-player game, where one player is assigned white checkers and the other red. Each player has 12 checkers to start the game. 
 
 Aim of the game. 
-The object of the game is to capture the other player's checkers or make them impossible to move 
+The object of the game is to capture the other player's checkers or make them impossible to move. 
 
 Start of the game. 
 The game is started in the position shown below on a checkers board consisting of 64 squares in an 8x8 grid. The red player moves first. Then each player takes a single turn. In fact, a player must move in turn. In other words a move cannot be skipped. 

@@ -7,7 +7,7 @@ III. The object of the game is to prevent the opponent from being able to move w
 
 IV. Single Checkers, known as men, move forward only, one square at a time in a diagonal direction, to an unoccupied square. Men capture by jumping over an opposing man on a diagonally adjacent square to the square immediately beyond, but may do so only if this square is unoccupied. Men may jump forward only, and may continue jumping as long as they encounter opposing Checkers with unoccupied squares immediately beyond them. Men may never jump over Checkers of the same color.
 
-Many players believe that Men can NOT jump Kings. This is incorrect Men may jump Kings in the same manner that they capture other Men.
+Many players believe that Men can NOT jump Kings. This is incorrect. Men may jump Kings in the same manner that they capture other Men.
 
 V. A man which reaches the far side of the board, whether by means of a jump or a simple move, becomes a King, and the move terminates. The opponent must then crown the new King by placing a Checker of the same color on top it. A player is not permitted to make his own move until he crowns his opponent's King.
 

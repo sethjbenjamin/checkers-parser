@@ -352,23 +352,42 @@ public class RulesParser
 	}
 
 	/**
-	Tests if "first" is a hypernym of "second" by seeing if "first" is one of the
-	hypernyms listed in WordNet of any VerbSynset containing "second".
+	Tests if "first" is a hypernym of "second" (= if "second" is a hyponym of "first") by seeing if "second" is one of the
+	hyponyms (called troponyms in JAWS) listed in WordNet of any VerbSynset containing "first".
+	The option is given to specify only certain synsets of "first" to look up the word forms of: the parameter "indices"
+	specifies the indices of which specific synsets of "first" are to be checked. (The indices in "indices" must refer only to the set
+	of VERB synsets of "first", not all parts of speech; eg, "0" refers to the very first verb defintion in WordNet of "first", ignoring
+	all other parts of speech.)
 	*/
-	public static boolean isHypernymOf(String first, String second)
+	public static boolean isHypernymOf(String first, String second, int... indices)
 	{
-		Synset[] secondSynsets = wordnet.getSynsets(second, SynsetType.VERB);
-		//we can only call getHypernyms() from VerbSynsets, not Synsets, so we have to do some casting
-		VerbSynset[] secondVerbSynsets = Arrays.copyOf(secondSynsets, secondSynsets.length, VerbSynset[].class);
-		//secondVerbSynsets contains all verb definitions of second
+		Synset[] firstSynsets = wordnet.getSynsets(first, SynsetType.VERB);
+		//we can only call getTroponyms() from VerbSynsets, not Synsets, so we have to do some casting
+		VerbSynset[] firstVerbSynsets = Arrays.copyOf(firstSynsets, firstSynsets.length, VerbSynset[].class);
+		//firstVerbSynsets contains all verb definitions of first
+		VerbSynset[] firstSynsetsDesired;
 
-		for (VerbSynset defintion: secondVerbSynsets) 
+		int i = 0;
+		if (indices.length > 0)
 		{
-			VerbSynset[] hypernymSynsets = defintion.getHypernyms(); //hypernymSynsets contains all synsets containing hypernyms of second
-			for (VerbSynset hypernymSynset: hypernymSynsets)
+			firstSynsetsDesired = new VerbSynset[indices.length];
+			for (int ind: indices)
 			{
-				String[] wordForms = hypernymSynset.getWordForms(); //wordForms contains individual words that are hypernyms of second
-				if (Arrays.asList(wordForms).contains(first)) // if first is one of the Strings in "wordForms"
+				firstSynsetsDesired[i] = firstVerbSynsets[ind];
+				//this loop adds each of the specified synsets from firstVerbSynsets to the ith position in firstSynsetsDesired
+				i++;
+			}
+		}
+		else // if no indices are specified
+			firstSynsetsDesired = firstVerbSynsets; //default to check all synsets
+		
+		for (VerbSynset defintion: firstSynsetsDesired) 
+		{
+			VerbSynset[] troponymSynsets = defintion.getTroponyms(); //troponymSynsets contains all synsets containing troponyms of first
+			for (VerbSynset troponymSynset: troponymSynsets)
+			{
+				String[] wordForms = troponymSynset.getWordForms(); //wordForms contains individual words that are troponyms of first
+				if (Arrays.asList(wordForms).contains(second)) // if second is one of the Strings in "wordForms"
 					return true;
 			}
 		}

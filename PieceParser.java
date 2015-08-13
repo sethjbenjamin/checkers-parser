@@ -280,35 +280,6 @@ public class PieceParser
 
 					}
 				}
-				// The following checks for a predicate nominative.
-				if (d.contains("nsubj") && pos1.charAt(0) == 'N')
-				{
-					//The following checks if the subject of the predicate nominative is name.
-					if (lemma2.equals(name))
-					{
-						// If so, lemma1 likely denotes an equivalent type to name.
-						/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
-						we don't want to simply add the same name as its own equivalent. */
-						if (!moveTypes.contains(lemma1) && !RulesParser.isSynonymOf("player", lemma1, 0) && !lemma1.equals(name))
-						{
-							currentPiece.addEquivalentType(lemma1);
-							System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma1);
-						}
-					}
-					//The following checks if the predicate nominative itself is name.
-					else if (lemma1.equals(name))
-					{
-						// If so, lemma2 (the subject) likely denotes an equivalent type to name.
-						/* Neither a move type nor any word referring to a player is ever the name of a piece; also,
-						we don't want to simply add the same name as its own equivalent. */
-						if (!moveTypes.contains(lemma2) && !RulesParser.isSynonymOf("player", lemma2, 0) && !lemma2.equals(name))
-						{
-							currentPiece.addEquivalentType(lemma2);
-							System.out.println("Equivalent type parsed for " + name + " in sentence " + i + ": " + lemma2);
-						}
-
-					}
-				}
 				/* The following checks for an adjectival clause modifying a noun, containing either 
 				of the past participles "known" or "called" as its head word. */
 				if (d.contains("acl(") && pos1.charAt(0) == 'N' && (lemma2.equals("know") || lemma2.equals("call")))

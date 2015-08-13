@@ -254,36 +254,38 @@ public class MotionParser
 				else if (d.contains("dep(") && lemma1.equals("not"))
 					negatedWords.add(index2);
 
-				if (d.contains("advmod(") || d.contains("amod(")) // check for adverbs modifying verbs, or adjectives modifying nouns
+				//check for adverbs modifying words
+				if (d.contains("advmod("))
 				{
-					/* We want to determine if the word being modified is one of the allowed move types being modified by a
-					directional adverb, or any synonym of the nouns "move" and "direction" being modified by a directional adjective. */
-
-					/* The following determines if lemma1 (the modified word) is:
-					-one of the allowed move types
-					-a synonym of "move (n)" or "direction (n)"
-					-a coordinating conjunction (explained below)
-					In a previous implementation, these dependencies (advmod and amod) were checked separately; checking for either at the
-					same time as we are now actually allows not only for constructions in which directional adverbs modify verbs and 
-					directional adjectives modify nouns, but also for those in which directional adverbs modify nouns and directional 
-					adjectives modify verbs. This is grammatically impossible in Standard English, but Stanford CoreNLP often incorrectly 
-					analyzes sentences as having such constructions, so checking for them gets better results.
-
-					Additionally, Stanford CoreNLP has a strange bug in which a sentence such as the following: 
-					"Kings move forward and backwards."
-					will not produce the dependencies "advmod(move, forward)" and "advmod(move, backward)" as expected, but will instead 
-					produce the following bizarre constructions: "advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". 
-					Since our example sentence is one of the more common ways English language rulesets describe the motion of kings,
-					we must also check if modified is a coordinating conjunction. */
-					if (moveTypes.contains(lemma1) || RulesParser.isSynonymOf("move", lemma1) || 
-						RulesParser.isSynonymOf("direction", lemma1) || lemma1.equals("square") || pos1.equals("CC"))
+					//check if the adverb modifies a verb that is any of the parsed motion types
+					if (pos1.charAt(0) == 'V' && moveTypes.contains(lemma1))
 					{
-						/*Now, we call addDirection() to check if lemma2, the modifier, is a directional adverb or adjective, and if so, to
-						add it to motionTypes. */
 						if (!negatedWords.contains(index1) && !negatedWords.contains(index2))
-							addDirection(lemma2, motionTypes, i, name); //TODO: remove i!!!
+							addDirection(lemma2, motionTypes, i, name);
+					}
+					/* CoreNLP is really bad at adverbs: it routinely parses adverbs as modifying nouns.
+					To compensate, we also add all directional adverbs that modify any noun in a candidate motion sentence.
+					CoreNLP also parses the following sentence: "Kings move forward and backwards." as having the dependencies
+					"advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". To compensate, we also add all
+					directional adverbs that modify coordinating conjunctions.  */
+					else if (pos1.equals("CC") || pos1.charAt(0) == 'N')
+					{
+						if (!negatedWords.contains(index1) && !negatedWords.contains(index2))
+							addDirection(lemma2, motionTypes, i, name);
 					}
 				}
+				//check for adjectives modifying words
+				else if (d.contains("amod("))
+				{
+					//check for adjectives modifying any of the nouns "move", "direction" or "square"
+					if (pos1.charAt(0) == 'N' && (lemma1.equals("move") || lemma1.equals("direction") || lemma1.equals("square")))
+					{
+						if (!negatedWords.contains(index1) && !negatedWords.contains(index2))
+							addDirection(lemma2, motionTypes, i, name);
+					}
+				}
+
+
 				else if (d.contains("nmod:toward")) //check for a PP like "toward the opponent"
 				{
 					// The following checks if the NP complement of the preposition is headed by a synonym of "opponent".

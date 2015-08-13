@@ -1,5 +1,5 @@
 Checkers is a  game for two players. It is played on an 8x8 checkered board, with a dark square in each player's lower left corner.
-In checkers, pieces move only on dark squares which are numbered. Numbers are used to record the moves, for example,   if Red moves from square 9 to square 13, then it is recorded as: 9-13
+In checkers, pieces move only on dark squares which are numbered. Numbers are used to record the moves, for example,   if Red moves from square 9 to square 13, then it is recorded as: 9-13.
 
 Each player controls its own army of pieces (men). The player who controls Red pieces moves first.  The pieces (also known as 'men') are arranged as shown on the left.
 

@@ -682,17 +682,19 @@ public class PieceParser
 			// The following checks for adjectives modifying nouns
 			if (d.contains("amod(") && pos2.contains("JJ"))
 			{
-				//The following checks if the noun being modified is any of "row", "rank", "side", "edge", or "end"
-				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || lemma1.equals("edge") || lemma1.equals("end"))
+				//The following checks if the noun being modified is any of "row", "rank", "side", "edge", "end", or "line"
+				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || 
+					lemma1.equals("edge") || lemma1.equals("end") || lemma1.equals("line"))
 				{
 					/*The following checks if the modifying adjective is dominated by any of the "reach" predicates indexed by
 					reachPredicates; that is, this checks if this modifying adjective is within the subordinate clause. */
 					if (parent.dominates(sentenceInd, reachPredicates, index2))
 					{
 						/* The following checks if the modifying adjective is any synonym of any of the following: "furthest",
-						"opposite", "far", or "last". These all correspond to the furthest row being the transition zone. */
+						"opposite", "far", or "last", or is the adjective "top". 
+						These all correspond to the furthest row being the transition zone. */
 						if (RulesParser.isSynonymOf("furthest", lemma2) || RulesParser.isSynonymOf("opposite", lemma2) || 
-							RulesParser.isSynonymOf("far", lemma2) || RulesParser.isSynonymOf("last", lemma2))
+							RulesParser.isSynonymOf("far", lemma2) || RulesParser.isSynonymOf("last", lemma2) || lemma2.equals("top"))
 						{
 							isTransitionZone = true;
 							isFurthestRow = true;
@@ -716,8 +718,9 @@ public class PieceParser
 			//The following checks for nouns modified by possessive forms
 			else if (d.contains("nmod:poss("))
 			{
-				//The following checks if the possessed noun is any of "row", "rank", "side", "edge", or "end"
-				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || lemma1.equals("edge") || lemma1.equals("end"))
+				//The following checks if the possessed noun is any of "row", "rank", "side", "edge", "end", or "line"
+				if (lemma1.equals("row") || lemma1.equals("rank") || lemma1.equals("side") || 
+					lemma1.equals("edge") || lemma1.equals("end") || lemma1.equals("line"))
 				{
 					/*The following checks if the possessing noun is dominated by any of the "reach" predicates indexed by
 					reachPredicates; that is, this checks if this possessing noun is within a clause headed by any of these 

@@ -228,8 +228,12 @@ public class MotionParser
 		for (int i: indices)
 		{
 			ArrayList<Integer> negatedWords = new ArrayList<Integer>(1);
-			/*this ArrayList will hold negated words in the current sentence (those modified by a negation word); 
+			/*this ArrayList will hold indices of negated words in the current sentence (those modified by a negation word); 
 			if a direction word or the word it modifies is in this list, it will not be added to motionTypes */
+			ArrayList<Integer> transitionPiecePredicates = new ArrayList<Integer>(1);
+			/*this ArrayList will hold indices of predicates that take as an argument the names of any transition type for p;
+			if a direction word modifies a verb, it will not be added to motionTypes if the verb is in this list (as such
+			predicates are more likely to denote motion of the transition type, not of p itself) */
 
 			CoreMap sentence = sentences.get(i); //the current sentence
 
@@ -248,11 +252,19 @@ public class MotionParser
 				String lemma1 = lemmas[i][index1]; 
 				String lemma2 = lemmas[i][index2]; 
 				String pos1 = partsOfSpeech[i][index1];
+				String pos2 = partsOfSpeech[i][index2];
 
 				if (d.contains("neg("))
 					negatedWords.add(index1);
 				else if (d.contains("dep(") && lemma1.equals("not"))
 					negatedWords.add(index2);
+				else if (moveTypes.contains(lemma1))
+				{
+					if (pos2.charAt(0) == 'N' && p.isTransitionType(lemma2))
+						transitionPiecePredicates.add(index1);
+					else if (pos2.equals("PRP") && p.isTransitionType(parent.determineAntecedent(i,index2)))
+						transitionPiecePredicates.add(index1);
+				}
 
 				//check for adverbs modifying words
 				if (d.contains("advmod("))
@@ -260,15 +272,15 @@ public class MotionParser
 					//check if the adverb modifies a verb that is any of the parsed motion types
 					if (pos1.charAt(0) == 'V' && moveTypes.contains(lemma1))
 					{
-						if (!negatedWords.contains(index1) && !negatedWords.contains(index2))
+						if (!transitionPiecePredicates.contains(index1) && !negatedWords.contains(index1) && !negatedWords.contains(index2))
 							addDirection(lemma2, motionTypes, i, name);
 					}
-					/* CoreNLP is really bad at adverbs: it routinely parses adverbs as modifying nouns.
-					To compensate, we also add all directional adverbs that modify any noun in a candidate motion sentence.
-					CoreNLP also parses the following sentence: "Kings move forward and backwards." as having the dependencies
-					"advmod(move, and)", "advmod(and, forward)", "advmod(and, backward)". To compensate, we also add all
-					directional adverbs that modify coordinating conjunctions.  */
-					else if (pos1.equals("CC") || pos1.charAt(0) == 'N')
+					/* CoreNLP is really bad at adverbs: it routinely parses adverbs as modifying nouns, or it mis-parses
+					nouns as adjectives and thinks the adverbs are modifying them. To compensate, we also add all directional adverbs that 
+					modify any noun or any adjective in a candidate motion  sentence. CoreNLP also parses the following sentence: 
+					"Kings move forward and backwards." as having the dependencies "advmod(move, and)", "advmod(and, forward)", 
+					"advmod(and, backward)". To compensate, we also add all directional adverbs that modify coordinating conjunctions. */
+					else if (pos1.equals("CC") || pos1.charAt(0) == 'N' || pos1.equals("JJ"))
 					{
 						if (!negatedWords.contains(index1) && !negatedWords.contains(index2))
 							addDirection(lemma2, motionTypes, i, name);
@@ -284,8 +296,6 @@ public class MotionParser
 							addDirection(lemma2, motionTypes, i, name);
 					}
 				}
-
-
 				else if (d.contains("nmod:toward")) //check for a PP like "toward the opponent"
 				{
 					// The following checks if the NP complement of the preposition is headed by a synonym of "opponent".

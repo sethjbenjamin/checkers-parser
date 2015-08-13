@@ -138,6 +138,14 @@ public class Piece
 		return this.transitionSentences.values();
 	}
 
+	/**
+	Determines whether a given String is the name of a transition type for this piece.
+	*/
+	public boolean isTransitionType(String pieceName)
+	{
+		return transitionSentences.containsValue(pieceName);
+	}
+
 
 	/**
 	Given an integer index of a transition sentence, and the name of the transition piece the sentence describes

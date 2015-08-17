@@ -66,7 +66,7 @@ public class EndParser
 						endConditionSentences.put(i, EndCondition.WIN);
 					else if (lemma.equals("lose"))
 						endConditionSentences.put(i, EndCondition.LOSE);
-					else if (pos.charAt(0) == 'N' && RulesParser.isSynonymOf("tie", lemma, 6)) //6 is wordnet index of "tie" relating to games
+					else if (pos.charAt(0) == 'N' && RulesParser.isSynonymOf("tie", lemma, 5)) //5 is wordnet index of "tie" relating to games
 						endConditionSentences.put(i, EndCondition.DRAW);
 					else if (pos.charAt(0) == 'N' && lemma.equals("stalemate"))
 						endConditionSentences.put(i, EndCondition.DRAW);

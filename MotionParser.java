@@ -120,10 +120,10 @@ public class MotionParser
 					}
 				}
 
-				/* The following if statement checks if the current sentence contains any hyponym of "move" as a 
+				/* The following if statement checks if the current sentence contains one of the parsed motion types as a 
 				predicate, and if so, if it either takes name or a pronoun as a subject or direct object. */
-				//if (moveTypes.contains(lemma1) && (d.contains("dobj") || d.contains("nsubj")))
-				if (RulesParser.isHypernymOf("move", lemma1) && (d.contains("dobj") || d.contains("nsubj")))
+				//if (RulesParser.isHypernymOf("move", lemma1) && (d.contains("dobj") || d.contains("nsubj")))
+				if (moveTypes.contains(lemma1) && (d.contains("dobj") || d.contains("nsubj")))
 				{
 					//if p is a transition type, previousType holds its previous type
 					Piece previousType = p.getPreviousType();
@@ -281,6 +281,13 @@ public class MotionParser
 					"Kings move forward and backwards." as having the dependencies "advmod(move, and)", "advmod(and, forward)", 
 					"advmod(and, backward)". To compensate, we also add all directional adverbs that modify coordinating conjunctions. */
 					else if (pos1.equals("CC") || pos1.charAt(0) == 'N' || pos1.equals("JJ"))
+					{
+						if (!negatedWords.contains(index1) && !negatedWords.contains(index2))
+							addDirection(lemma2, motionTypes, i, name);
+					}
+					/* CoreNLP also breaks with the construction "move backwards as well as forwards", thinking "backwards" is 
+					modfying the adverb "well", so we check for that, too. */
+					else if (pos1.equals("RB") && lemma1.equals("well"))
 					{
 						if (!negatedWords.contains(index1) && !negatedWords.contains(index2))
 							addDirection(lemma2, motionTypes, i, name);

@@ -38,10 +38,9 @@ public class EndParser
 		return this.endConditions;
 	}
 
-	public void parseEndConditions()
+	public HashMap<Integer,String> determineEndConditionSentences()
 	{
-		/* The following method parses end conditions. First, it determines candidate end condition sentences by searching all lemmas
-		in all sentences for the following words:
+		/* The following method determines candidate end condition sentences by searching all lemmas in all sentences for the following words:
 		- "win", any noun synonym of "objective", any noun synonym of "goal" (sentences with these potentially describe a win condition)
 		- "lose", any verb synonym of "end" (sentences with these potentially describe a lose condition)
 		- any noun synonym of "tie", or the noun "stalemate" (sentences with these potentially describe a draw condition)
@@ -144,6 +143,15 @@ public class EndParser
 				}
 			}
 		}
+		return endConditionSentences;
+
+	}
+
+	public void parseEndConditions()
+	{
+		/* The following method parses end conditions. First, we call determineEndConditionSentences() to determine
+		what sentences in the ruleset potentially describe end conditions.*/
+		HashMap<Integer, String> endConditionSentences = determineEndConditionSentences();
 
 		/* Now, we iterate over all the sentences found, and search for constructions that describe end conditions.
 		This system supports two kinds of end conditions, which are directly supported by the ZRF format: a player being stalemated 

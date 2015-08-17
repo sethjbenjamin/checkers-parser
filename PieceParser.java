@@ -45,7 +45,8 @@ public class PieceParser
 		for (int i = 0; i < pieceTypes.size(); i++)
 		{
 			Piece p = pieceTypes.get(i);
-			if (p.getMotionTypes().size() == 0) // remove pieces with no parsed motion types (removes false positives)
+			// remove pieces with no parsed motion types (removes false positives)
+			if (p.getMotionTypes().size() == 0)
 			{
 				System.out.println("Piece " + p.getName() + " removed");
 				//remove all transition sentences for p from the transitionSentences hashmap of its previous type, if it has one
@@ -54,8 +55,13 @@ public class PieceParser
 				pieceTypes.remove(p);
 				i--;
 			}
-			else if (!p.isDefault()) // add all motion types of a previous piece to its transition piece
+			// for transition pieces, find transition zones, and add all motion types of their previous type
+			else if (!p.isDefault()) 
 			{
+				ArrayList<Integer> transitionZoneIndices = determineTransitionZoneSentences(p);
+				for (int index: transitionZoneIndices)
+					parseTransitionZones(p, index);
+
 				Piece previous = p.getPreviousType();
 				p.addMotionTypes(previous.getMotionTypes());
 			}
@@ -462,16 +468,7 @@ public class PieceParser
 				Piece transitionPiece = new Piece(transitionPieceName, currentPiece); 
 				// we have to add the index of the transition sentence to the transitionSentences field of currentPiece
 				currentPiece.addTransitionSentence(i, transitionPieceName);
-				// we also have to use this transition sentence to try to parse the transition zone for this new piece type
-				parseTransitionZones(transitionPiece, i); 
-				/* Often, sentences we've parsed as transition sentences by detecting predicate nominatives and "renaming predicates" 
-				(known as, called) modified by now actually describe the transition zone in the previous sentence. For example:
-				When a piece reaches a space in the row on the opposite side of the board (the “King Me” row), its player picks up 
-				the piece and crowns it by twisting its base counter-clockwise, then sets it back on its space. It is now a King!"
-				The second sentence is the transition sentence, but the first sentence describes the transition zone. So,
-				we check for these predicates modified by now, and if so, call parseTransitionZones() on sentence i-1 as well. */
-				if ((isPredicateNominative || isRenamingPredicate) && isModifiedByNow)
-					parseTransitionZones(transitionPiece, i-1); 
+
 				// now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
 				for (Piece p: pieceTypes) //check all pieceTypes to see if any one is the same as newPiece
@@ -597,11 +594,6 @@ public class PieceParser
 				System.out.print("New previous piece found: " + previousPieceName + " in sentence " + i); //debugging
 				System.out.println(" (transition type: " + name + ")"); //debugging
 				Piece previousPiece = new Piece(previousPieceName); 
-				//we have to set the previousType of currentPiece to this newly parsed piece
-				currentPiece.setPreviousType(previousPiece);
-				/*since we've determined that the ith sentence is a transition sentence describing the transition to currentPiece, 
-				we have to try to parse transition zones for currentPiece with it */
-				parseTransitionZones(currentPiece, i); 
 
 				//now we add the new type of piece to pieceTypes, but only if it hasn't already been added
 				boolean isAlreadyAdded = false;
@@ -618,7 +610,7 @@ public class PieceParser
 					if (p.equals(previousPiece))
 					{
 						isAlreadyAdded = true;
-						//have to add this sentence as a transition sentence for the new previous type
+						//add this sentence as a transition sentence for the new previous type
 						p.addTransitionSentence(i, name);
 						break; //don't need to check the rest
 					}
@@ -626,12 +618,79 @@ public class PieceParser
 				if (!isAlreadyAdded) // if the piece hasn't already been added,
 				{
 					pieceTypes.add(previousPiece); //add it
+					currentPiece.setPreviousType(previousPiece); //set the previousType of currentPiece to this newly parsed piece
 					previousPiece.addTransitionSentence(i, name); //add the parsed transition sentence to its list of transition sentences
+
 					parseEquivalentTypes(previousPiece); // check for equivalent types of the new piece
 					parsePreviousTypes(previousPiece); // check for previous types of the new piece
 				}
 			}
 		}
+	}
+
+	public ArrayList<Integer> determineTransitionZoneSentences(Piece transitionPiece)
+	{
+		/* The following method determines sentences that potentially describe the transition zone of transitionPiece.
+		The method considers any sentence to be a transition zone sentence if it is any of the following:
+		- a transition sentence (describing how a previous piece becomes transitionPiece)
+		- a sentence containing the a compound noun phrase compounding any name of transitionPiece and either of "row" or "rank"
+		  (eg: "king row")
+		- a sentence containing either a predicate nominative, or a predicate in passive voice, whose lemma is any name of
+		  transitionPiece and which takes either any name of transitionPiece's previous type or a pronoun referring to this as an 
+		  argument
+		  (eg: "the checker is kinged")
+		*/
+
+		Piece previousPiece = transitionPiece.getPreviousType();
+		String name = transitionPiece.getName();
+		ArrayList<Integer> indices = new ArrayList<Integer>(1);
+		for (int i = 0; i < sentences.size(); i++)
+		{
+			if (previousPiece.isTransitionSentence(i, name)) //if it's a transition sentence for this transition piece,
+				indices.add(Integer.valueOf(i)); //add it
+			else //otherwise,
+			{
+				CoreMap sentence = sentences.get(i);
+				String[] dependencies = sentence.get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class).toString(
+					SemanticGraph.OutputFormat.LIST).split("\n");
+				//iterate over all dependencies
+				for (int j = 1; j < dependencies.length; j++)
+				{
+					String d = dependencies[j];
+					int index1 = RulesParser.isolateIndexFromDependency(d,1);
+					int index2 = RulesParser.isolateIndexFromDependency(d,2);
+					String lemma1 = lemmas[i][index1];
+					String lemma2 = lemmas[i][index2];
+					String pos1 = partsOfSpeech[i][index1];
+					String pos2 = partsOfSpeech[i][index2];
+
+					//check for predicate nominatives or passive voice predicates with transitionPiece's name as a predicate
+					if (transitionPiece.isAnyName(lemma1) && (pos1.charAt(0) == 'N' || pos1.equals("VBN")))
+					{
+						if (previousPiece.isAnyName(lemma2))
+						{
+							indices.add(Integer.valueOf(i)); 
+							break;
+						}
+						else if (pos2.equals("PRP") && previousPiece.isAnyName(parent.determineAntecedent(i, index2)))
+						{
+							indices.add(Integer.valueOf(i));
+							break;	
+						}
+					}
+					//check for compound nouns compounding a name of transitionPiece and "row"/"rank"
+					else if (transitionPiece.isAnyName(lemma2))
+					{
+						if (d.contains("compound(") && (lemma1.equals("row") || lemma1.equals("rank")))
+						{
+							indices.add(Integer.valueOf(i));
+							break;	
+						}
+					}
+				}
+			}
+		}
+		return indices;
 	}
 
 	public void parseTransitionZones(Piece transitionPiece, int sentenceInd)
@@ -760,7 +819,7 @@ public class PieceParser
 				System.out.print(" closest row");
 				transitionPiece.setIsClosestRow(true);
 			}
-			System.out.println();
+			System.out.println(" in sentence " + sentenceInd);
 
 			editTransitionZones(transitionPiece, isFurthestRow, isClosestRow);
 		}

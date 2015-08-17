@@ -153,7 +153,7 @@ public class Piece
 	*/
 	public void addTransitionSentence(int index, String pieceName)
 	{
-		transitionSentences.put(new Integer(index), pieceName);
+		transitionSentences.put(Integer.valueOf(index), pieceName);
 	}
 
 	/**

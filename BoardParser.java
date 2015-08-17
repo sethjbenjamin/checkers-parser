@@ -90,7 +90,8 @@ public class BoardParser
 			/* If we get to this point, then we haven't found a "MxN" in this sentence, so we
 			explore the following phrases (with "M" and "N" as integers):
 			- "N square" (where "square" is necessarily dominated by or siblings with "board" in the semantic dependency graph)
-			- "M rows/ranks" "N columns/files" 
+			- "M rows/ranks" "N columns/files"  (where any of these nouns are necessarily dominated by or siblings with "board" 
+			  in the semantic dependency graph)
 			If multiple such statements are found in the ruleset, the statement that results in the largest number of rows and 
 			columns is used (eg, in the sentence "The board consists of 64 squares, alternating between 32 black and 32 red squares"
 			only "64 squares" is used, not "32 squares"). */
@@ -144,14 +145,20 @@ public class BoardParser
 								boardIndex = index1;
 							}
 							else if (lemma1.equals("row") || lemma1.equals("rank"))
-							{
-								if (value > dimensions[0])
-									dimensions[0] = value;
+							{	//check if "row"/"rank" is either dominated by or siblings with "board" in the semantic dependency graph
+								if (parent.dominates(i, indicesOfBoard, index1) || parent.isSibling(i, indicesOfBoard, index1))
+								{
+									if (value > dimensions[0])
+										dimensions[0] = value;
+								}
 							}
 							else if (lemma1.equals("column") || lemma1.equals("file"))
-							{
-								if (value > dimensions[1])
-									dimensions[1] = value;
+							{	//check if "column"/"file" is either dominated by or siblings with "board" in the semantic dependency graph
+								if (parent.dominates(i, indicesOfBoard, index1) || parent.isSibling(i, indicesOfBoard, index1))
+								{
+									if (value > dimensions[1])
+										dimensions[1] = value;
+								}
 							}
 						}
 						catch (NumberFormatException e)

@@ -160,23 +160,24 @@ public class EndParser
 		For a stalemated condition, the system searches for the following constructions:
 		1. the predicate "move" being negated (eg: "when a player can not move")
 		2. a modifier or argument of the predicate "move" being negated (eg: "when a player can no longer move")
-		3. the noun "move" being negated (eg: "when a player can make no move")
-		4. the predicate taking the noun "move" as an argument being negated (eg: "when a player can't make a move")
-		5. a modifier of the noun "move" being negated (eg: "when a player has no available moves")
-		6. any verb synonym of "block" taking any phrase denoting "all of the pieces" (where "pieces" can be substitued with
+		3. the predicate "move" being dominated by any verb synonym of the verb "prevent" (eg: "prevent your opponent from moving")
+		4. the noun "move" being negated (eg: "when a player can make no move")
+		5. the predicate taking the noun "move" as an argument being negated (eg: "when a player can't make a move")
+		6. a modifier of the noun "move" being negated (eg: "when a player has no available moves")
+		7. any verb synonym of "block" taking any phrase denoting "all of the pieces" (where "pieces" can be substitued with
 		any of the parsed piece names) as an argument (eg: "when all of your pieces are blocked")
 
 		A pieces-remaining condition notably requires a quantifier value (that is, the number of pieces that must remain for the condition
 		to be true.) This value is stored in the integer variable "quantifier".
 		For a pieces-remaining condition, the system searches for the following constructions:
-		7. any of the verbs "capture", "remove" or "lose" taking any phrase denoting "all of the pieces" (where "pieces" can be 
+		8. any of the verbs "capture", "remove" or "lose" taking any phrase denoting "all of the pieces" (where "pieces" can be 
 		substitued with any of the parsed piece names) as an argument (eg: "when all of your pieces are blocked") 
 		   - this necessarily implies the quantifier = 0
-		8. the verb "have" taking the noun phrase "pieces left" or "pieces remaining" as an argument, where "pieces" can be 
+		9. the verb "have" taking the noun phrase "pieces left" or "pieces remaining" as an argument, where "pieces" can be 
 		substitued with any of the parsed piece names, and where this argument is either
 		   - negated (quantifier = 0)
 		   - modified by a number N (quantifier = N)
-		9. the verb "have" taking the noun phrase "no more pieces" as an argument (quantifier = 0)
+		10. the verb "have" taking the noun phrase "no more pieces" as an argument (quantifier = 0)
 
 		Often, rulesets will define an end condition for the player by describing a state of the player's opponent. For example:
 		"A player wins the game when the opponent cannot make a move." defines a win condition for the player by describing
@@ -184,12 +185,13 @@ public class EndParser
 		To acommodate for this, we have to analyze the constructions we search for to see if they describe the opponent or 
 		the player, and if they describe the opponent, consider this end condition to be of the opposite type. (The boolean
 		variable isOppositeType handles this.)
-		In the previously described constructions numbered 1, 2, 3, 4, 5, 8, 9, we searched for predicates: either "move" (v),
+		In the previously described constructions numbered 1, 2, 3*, 4, 5, 6, 9, 10, we searched for predicates: either "move" (v),
 		a verb taking "move" (n) as an argument, or "have" taking "piece" as an argument. We test for isOppositeType by seeing if 
 		the predicate takes any noun phrase denoting "opponent" as an argument. (Such NPs include: "other player", "opposing player",
-		and any noun synonym of "opponent".) 
+		and any noun synonym of "opponent".)
 		 - (eg: "When the opponent can not make a move" "When the other player has no pieces left")
-		In the previously desribed constructions numbered 6, 7, we searched for DPs denoting "all of the pieces". We test for 
+		 - *Also, in case 3, isOppositeType is set true if any NP denoting "opponent" is an argument of the predicate "prevent".
+		In the previously desribed constructions numbered 7, 8, we searched for DPs denoting "all of the pieces". We test for 
 		isOppositeType by seeing if the noun in this DP is possessed by any NP denoting "opponent". 
 		 - (eg: "When all of the other player's pieces are captured" "When you have blocked all the opponent's pieces") */
 		for (int i: endConditionSentences.keySet())
@@ -209,6 +211,8 @@ public class EndParser
 
 			boolean isStalemated = false; // whether or not this sentence describes a stalemated end condition
 			boolean isPiecesRemaining = false; // whether or not this sentence describes a pieces-remaining end condition
+
+			int preventInd = -1; // index of a verb synonym of "prevent"
 
 			boolean isCaptureAll = false; //representing the dobj(capture, all) dependency in a statement like "capture all of the pieces"
 			boolean isBlockAll = false; //representing the dobj(block, all) dependency in a statement like "block all of the pieces"
@@ -245,8 +249,15 @@ public class EndParser
 					//check for a modifier or argument of the verb being negated
 					else if (negatedWords.contains(index2))
 						isStalemated = true;
+					//check for the verb "move" being dominated by the verb "prevent"
+					else if (preventInd != -1 && parent.dominates(i, preventInd, index1))
+					{
+						isStalemated = true;
+						if (isOpponentArgument(i, preventInd))
+							isOppositeType = true;
+					}
 
-					/* If either of these checks worked, then isStalemated is true; if so, we now have to check any arguments 
+					/* If either of the negation checks worked, then isStalemated is true; if so, we now have to check any arguments 
 					of the verb "move" and see if they are any phrase denoting the opponent. We do this by calling
 					isOpponentArgument(). (If these are both true, isOppositeType must be set true.) */
 					if (isStalemated && isOpponentArgument(i, index1))
@@ -277,6 +288,9 @@ public class EndParser
 						isStalemated = true;
 					//we don't have to check if the noun "move" is negated, that's already checked in the previous if block
 				}
+				//check for synonyms of the word "prevent"
+				else if (RulesParser.isSynonymOf("prevent", lemma1))
+					preventInd = index1;
 				// check for a verb taking a DP headed by "all" as an argument
 				else if (pos1.charAt(0) == 'V' && pos2.equals("DT") && lemma2.equals("all"))
 				{

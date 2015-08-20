@@ -178,7 +178,7 @@ public class ZRFWriter
 			for (int j = 0; j < dimensions[1]; j++)
 			{
 				writer.write(alphabet.charAt(j));
-				if (j != dimensions[0] - 1)
+				if (j != dimensions[1] - 1)
 					writer.write("/");
 			}
 			writer.write("\") ; columns" + "\n");
